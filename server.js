@@ -76,6 +76,7 @@ async function throttleEbayApi() {
 }
 
 // Middleware
+app.set('trust proxy', 1); // Trust first proxy (Render's load balancer)
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 

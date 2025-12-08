@@ -1,0 +1,2690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HelmetPulse — Smart Helmet Value Tracking</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #09090b;
+            --bg-card: #18181b;
+            --bg-card-hover: #1f1f23;
+            --bg-elevated: #27272a;
+            --border: #27272a;
+            --border-subtle: #3f3f46;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --accent-primary: #a78bfa;
+            --accent-light: #c4b5fd;
+            --accent-dark: #8b5cf6;
+            --accent-blue: #60a5fa;
+            --success: #22c55e;
+            --success-bg: rgba(34, 197, 94, 0.12);
+            --danger: #ef4444;
+            --danger-bg: rgba(239, 68, 68, 0.12);
+            --warning: #f59e0b;
+            --warning-bg: rgba(245, 158, 11, 0.12);
+            --gradient-primary: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);
+            --gradient-blue: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+            --gradient-dark: linear-gradient(180deg, var(--bg-dark) 0%, #0c0c0e 100%);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+            --shadow-primary: 0 4px 20px rgba(167, 139, 250, 0.35);
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --radius-xl: 20px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--gradient-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated background particles */
+        .bg-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--accent-primary) 0%, transparent 70%);
+            opacity: 0.03;
+            animation: float linear infinite;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) scale(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.03;
+            }
+            90% {
+                opacity: 0.03;
+            }
+            100% {
+                transform: translateY(-100px) scale(1);
+                opacity: 0;
+            }
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+        /* Header */
+        header {
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: rgba(9, 9, 11, 0.85);
+            backdrop-filter: blur(20px);
+            z-index: 100;
+            transition: all 0.3s;
+        }
+
+        header:hover {
+            background: rgba(9, 9, 11, 0.95);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .logo:hover {
+            transform: scale(1.05);
+        }
+
+        .logo-icon {
+            width: 38px;
+            height: 38px;
+            background: var(--gradient-primary);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            box-shadow: var(--shadow-primary);
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: var(--shadow-primary); }
+            50% { transform: scale(1.05); box-shadow: 0 6px 30px rgba(167, 139, 250, 0.4); }
+        }
+
+        .logo-text { font-weight: 700; font-size: 1.35rem; letter-spacing: -0.03em; }
+        .logo-text span {
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-actions { display: flex; align-items: center; gap: 12px; }
+
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 4px;
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        .nav-tab {
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            z-index: 1;
+        }
+
+        .nav-tab:hover { color: var(--text-primary); transform: translateY(-1px); }
+        .nav-tab.active {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        /* User Menu */
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #000;
+            transition: transform 0.3s;
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .user-name {
+            font-size: 0.85rem;
+            font-weight: 500;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .user-dropdown {
+            position: relative;
+        }
+
+        .dropdown-trigger {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .dropdown-trigger:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-subtle);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            min-width: 180px;
+            padding: 8px;
+            display: none;
+            box-shadow: var(--shadow-lg);
+            z-index: 200;
+            animation: slideDown 0.2s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dropdown-menu.open { display: block; }
+
+        .dropdown-item {
+            display: block;
+            width: 100%;
+            padding: 10px 12px;
+            background: none;
+            border: none;
+            text-align: left;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: all 0.15s;
+        }
+
+        .dropdown-item:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            transform: translateX(4px);
+        }
+        .dropdown-item.danger:hover { background: var(--danger-bg); color: var(--danger); }
+
+        .dropdown-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 8px 0;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 18px;
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: #000;
+            box-shadow: var(--shadow-primary);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(167, 139, 250, 0.45);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-subtle);
+            transform: translateY(-2px);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            padding: 8px 12px;
+        }
+
+        .btn-ghost:hover {
+            color: var(--text-primary);
+            background: var(--bg-card);
+            transform: translateY(-2px);
+        }
+        .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.25s;
+        }
+
+        .modal-overlay.open { opacity: 1; visibility: visible; }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            width: 90%;
+            max-width: 420px;
+            transform: scale(0.95) translateY(10px);
+            transition: transform 0.25s;
+        }
+
+        .modal-overlay.open .modal { transform: scale(1) translateY(0); }
+
+        .modal-header {
+            padding: 24px 24px 0;
+            text-align: center;
+        }
+
+        .modal-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 8px; }
+        .modal-subtitle { color: var(--text-secondary); font-size: 0.9rem; }
+
+        .modal-body { padding: 24px; }
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            font-size: 18px;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            transform: rotate(90deg);
+        }
+
+        /* Auth Form */
+        .auth-form { display: flex; flex-direction: column; gap: 16px; }
+
+        .auth-input-group { display: flex; flex-direction: column; gap: 6px; }
+
+        .auth-label { font-size: 0.85rem; color: var(--text-secondary); font-weight: 500; }
+
+        .auth-input {
+            padding: 12px 14px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        .auth-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .auth-input::placeholder { color: var(--text-muted); }
+
+        .auth-error {
+            padding: 10px 12px;
+            background: var(--danger-bg);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: var(--radius-sm);
+            color: var(--danger);
+            font-size: 0.85rem;
+            display: none;
+            animation: shake 0.3s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .auth-error.show { display: block; }
+
+        .auth-switch {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .auth-switch a {
+            color: var(--accent-primary);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .auth-switch a:hover { text-decoration: underline; opacity: 0.8; }
+
+        /* Sync Status */
+        .sync-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-right: 20px;
+            padding: 6px 12px;
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            transition: all 0.3s;
+        }
+
+        .sync-status:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .sync-icon { font-size: 0.9rem; }
+        .sync-icon.syncing { animation: spin 1s linear infinite; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Main Layout */
+        main { padding: 32px 0; }
+
+        .page-section { display: none; animation: fadeInUp 0.4s ease; }
+        .page-section.active { display: block; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Dashboard */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 900px) { .dashboard-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 500px) { .dashboard-grid { grid-template-columns: 1fr 1fr; } }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--gradient-primary);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+
+        .stat-card:hover::before { opacity: 1; }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-change {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75rem;
+            margin-top: 8px;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .stat-change.positive { background: var(--success-bg); color: var(--success); }
+        .stat-change.negative { background: var(--danger-bg); color: var(--danger); }
+
+        /* Add Card Form */
+        .add-card-form {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 24px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: visible;
+        }
+
+        .add-card-form::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(167, 139, 250, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            transition: transform 0.6s;
+        }
+
+        .add-card-form:hover::after {
+            transform: translate(-25%, -25%);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: end;
+            position: relative;
+            z-index: 1;
+        }
+
+        .form-main-input {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        @media (max-width: 600px) {
+            .form-row { grid-template-columns: 1fr; }
+            .form-main-input { grid-template-columns: 1fr; }
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            position: relative;
+            overflow: visible;
+        }
+        .form-label { font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; }
+
+        .form-input, .form-select {
+            padding: 10px 14px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .form-input::placeholder { color: var(--text-muted); }
+
+        /* Autocomplete Dropdown */
+        .autocomplete-wrapper {
+            position: relative;
+        }
+
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #18181b;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.05);
+            max-height: 320px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 2000;
+            display: none;
+            margin-top: 4px;
+        }
+
+        .autocomplete-dropdown.show {
+            display: block;
+            animation: dropdownFade 0.2s ease-out;
+        }
+
+        @keyframes dropdownFade {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .autocomplete-item {
+            padding: 14px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            transition: all 0.15s;
+            background: #18181b;
+        }
+
+        .autocomplete-item:first-child {
+            border-top-left-radius: var(--radius-md);
+            border-top-right-radius: var(--radius-md);
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+            border-bottom-left-radius: var(--radius-md);
+            border-bottom-right-radius: var(--radius-md);
+        }
+
+        .autocomplete-item:hover,
+        .autocomplete-item.selected {
+            background: #27272a;
+        }
+
+        .autocomplete-item-name {
+            font-weight: 500;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            line-height: 1.5;
+            margin-bottom: 6px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            word-break: break-word;
+            max-height: 2.625rem;
+        }
+
+        .autocomplete-item-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+        }
+
+        .autocomplete-item-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            position: relative;
+        }
+
+        .autocomplete-item-meta span:not(:last-child)::after {
+            content: '•';
+            position: absolute;
+            right: -8px;
+            color: var(--border-subtle);
+        }
+
+        .autocomplete-item-meta .team {
+            color: var(--accent-primary);
+            font-weight: 500;
+        }
+
+        .autocomplete-no-results {
+            padding: 16px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .autocomplete-loading {
+            padding: 16px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        /* Section Headers */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-actions { display: flex; gap: 8px; }
+
+        /* API Rate Limit Warning */
+        .api-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            color: var(--warning);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: fadeInUp 0.3s ease;
+        }
+
+        .data-age {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 6px;
+            background: rgba(167, 139, 250, 0.1);
+            border-radius: 4px;
+            font-size: 0.7rem;
+            color: var(--accent-primary);
+        }
+
+        .data-age.stale {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .data-age.fresh {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--success);
+        }
+
+        /* Card Grid */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+        }
+
+        .card-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-item::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: var(--gradient-primary);
+            border-radius: var(--radius-lg);
+            opacity: 0;
+            z-index: -1;
+            transition: opacity 0.4s;
+        }
+
+        .card-item:hover {
+            background: var(--bg-card-hover);
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+        }
+
+        .card-item:hover::before {
+            opacity: 0.3;
+        }
+
+        .card-item.positive { border-left: 3px solid var(--success); }
+        .card-item.negative { border-left: 3px solid var(--danger); }
+
+        .card-item.refreshing {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            gap: 12px;
+        }
+
+        .card-info { flex: 1; min-width: 0; }
+
+        .card-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        .card-tag {
+            font-size: 0.68rem;
+            padding: 2px 7px;
+            background: var(--bg-dark);
+            border-radius: 4px;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .card-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+        .card-action-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: var(--radius-sm);
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .card-action-btn:hover {
+            border-color: var(--border);
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            transform: scale(1.1);
+        }
+        .card-action-btn.delete:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+            background: var(--danger-bg);
+        }
+
+        .card-action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .card-prices {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .price-block {
+            background: var(--bg-dark);
+            padding: 12px;
+            border-radius: var(--radius-md);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .price-block::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(167, 139, 250, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .card-item:hover .price-block::before {
+            left: 100%;
+        }
+
+        .price-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 4px;
+        }
+
+        .price-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 1.15rem;
+            font-weight: 700;
+        }
+
+        .price-range { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 10px; }
+
+        .change-badge {
+            display: inline-flex;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.78rem;
+            font-weight: 600;
+            background: var(--bg-dark);
+            color: var(--text-muted);
+            transition: all 0.3s;
+        }
+
+        .change-badge.positive {
+            background: var(--success-bg);
+            color: var(--success);
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.2);
+        }
+        .change-badge.negative {
+            background: var(--danger-bg);
+            color: var(--danger);
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+        }
+
+        .cost-basis-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .cost-label { font-size: 0.75rem; color: var(--text-muted); }
+
+        .cost-input-wrap {
+            display: flex;
+            align-items: center;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0 8px;
+            transition: all 0.3s;
+        }
+
+        .cost-input-wrap:focus-within {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.1);
+        }
+        .cost-input-wrap span { color: var(--text-muted); font-size: 0.85rem; }
+
+        .cost-input {
+            width: 60px;
+            padding: 6px 4px;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-family: 'Space Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        .cost-input:focus { outline: none; }
+
+        .profit-display {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.8rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-left: auto;
+            transition: all 0.3s;
+        }
+
+        .profit-display.profit {
+            background: var(--success-bg);
+            color: var(--success);
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.2);
+        }
+        .profit-display.loss {
+            background: var(--danger-bg);
+            color: var(--danger);
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.2);
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            margin-top: 12px;
+        }
+
+        .comps-link {
+            font-size: 0.78rem;
+            color: var(--accent-primary);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .comps-link:hover {
+            opacity: 0.8;
+            transform: translateX(4px);
+        }
+        .last-updated {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Skeleton Loading */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-dark) 25%, var(--bg-elevated) 50%, var(--bg-dark) 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .empty-state h3 { color: var(--text-secondary); margin-bottom: 8px; font-size: 1.1rem; }
+        .empty-state p { max-width: 300px; margin: 0 auto; }
+
+        /* No Comps State */
+        .no-comps-state {
+            background: linear-gradient(135deg, rgba(113, 113, 122, 0.1) 0%, rgba(63, 63, 70, 0.1) 100%);
+            border: 1px dashed var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .no-comps-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+            opacity: 0.6;
+        }
+
+        .no-comps-text {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .no-comps-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Tools Section */
+        .tools-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 800px) { .tools-grid { grid-template-columns: 1fr; } }
+
+        .tool-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .tool-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+        }
+
+        .tool-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, rgba(167, 139, 250, 0.05) 0%, transparent 100%);
+        }
+
+        .tool-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--gradient-primary);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: var(--shadow-primary);
+        }
+
+        .tool-title { font-size: 1.1rem; font-weight: 600; }
+        .tool-subtitle { font-size: 0.8rem; color: var(--text-muted); }
+        .tool-body { padding: 20px; }
+
+        .calc-form { display: flex; flex-direction: column; gap: 16px; }
+        .calc-input-group { display: flex; flex-direction: column; gap: 6px; }
+        .calc-input-group label { font-size: 0.8rem; color: var(--text-secondary); }
+
+        .calc-input-wrap {
+            display: flex;
+            align-items: center;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 0 14px;
+            transition: all 0.3s;
+        }
+
+        .calc-input-wrap:focus-within {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.1);
+        }
+        .calc-input-wrap span { color: var(--text-muted); }
+
+        .calc-input {
+            flex: 1;
+            padding: 12px 8px;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        .calc-input:focus { outline: none; }
+
+        .segment-control {
+            display: flex;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 4px;
+            gap: 4px;
+        }
+
+        .segment-btn {
+            flex: 1;
+            padding: 10px 8px;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-sm);
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .segment-btn:hover {
+            color: var(--text-primary);
+            transform: scale(1.05);
+        }
+        .segment-btn.active {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .calc-result {
+            margin-top: 20px;
+            padding: 20px;
+            background: var(--bg-dark);
+            border-radius: var(--radius-md);
+            text-align: center;
+            border: 1px solid var(--border);
+            animation: fadeInUp 0.3s ease;
+        }
+
+        .result-verdict {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            animation: scaleIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes scaleIn {
+            0% { transform: scale(0); }
+            100% { transform: scale(1); }
+        }
+
+        .result-verdict.grade { color: var(--success); }
+        .result-verdict.skip { color: var(--danger); }
+        .result-verdict.maybe { color: var(--warning); }
+
+        .result-breakdown {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .breakdown-item { text-align: center; }
+        .breakdown-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; }
+        .breakdown-value { font-family: 'Space Mono', monospace; font-size: 0.95rem; font-weight: 600; margin-top: 4px; }
+        .result-note { margin-top: 12px; font-size: 0.85rem; color: var(--text-secondary); }
+
+        .tip-item {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            transition: all 0.3s;
+        }
+
+        .tip-item:hover {
+            transform: translateX(4px);
+        }
+
+        .tip-item:last-child { border-bottom: none; }
+        .tip-icon { font-size: 1.2rem; }
+        .tip-content { flex: 1; }
+        .tip-title { font-weight: 600; color: var(--text-primary); margin-bottom: 4px; font-size: 0.9rem; }
+        .tip-text { color: var(--text-secondary); font-size: 0.85rem; line-height: 1.5; }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 14px 20px;
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 200;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success {
+            border-color: var(--success);
+            box-shadow: 0 4px 20px rgba(34, 197, 94, 0.3);
+        }
+        .toast.error {
+            border-color: var(--danger);
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
+        }
+
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 24px 0;
+            margin-top: 48px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        /* Guest Banner */
+        .guest-banner {
+            background: linear-gradient(135deg, rgba(167, 139, 250, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
+            border: 1px solid rgba(167, 139, 250, 0.2);
+            border-radius: var(--radius-lg);
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .guest-banner-text { font-size: 0.9rem; color: var(--text-secondary); }
+        .guest-banner-text strong { color: var(--accent-primary); }
+    </style>
+</head>
+<body>
+    <!-- Animated background particles -->
+    <div class="bg-particles" id="particles"></div>
+
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <img src="./images/logo.png" alt="HelmetPulse Logo" style="height: 50px; width: auto;">
+                </div>
+
+                <nav class="nav-tabs">
+                    <button class="nav-tab active" data-tab="watchlist">Watchlist</button>
+                </nav>
+
+                <div class="header-actions">
+                    <!-- Guest State -->
+                    <div id="guestActions">
+                        <button class="btn btn-secondary btn-sm" onclick="openAuthModal('login')">Log In</button>
+                        <button class="btn btn-primary btn-sm" onclick="openAuthModal('register')">Sign Up</button>
+                    </div>
+
+                    <!-- Logged In State -->
+                    <div id="userActions" style="display:none;">
+                        <div class="sync-status" id="syncStatus" title="Last sync status">
+                            <span class="sync-icon">☁️</span>
+                            <span>Synced</span>
+                        </div>
+                        <div class="user-dropdown">
+                            <div class="dropdown-trigger" onclick="toggleDropdown()">
+                                <div class="user-avatar" id="userAvatar">U</div>
+                                <span class="user-name" id="userName">User</span>
+                                <span style="font-size:0.7rem;color:var(--text-muted);">▼</span>
+                            </div>
+                            <div class="dropdown-menu" id="userDropdown">
+                                <div style="padding:8px 12px;font-size:0.75rem;color:var(--text-muted);">
+                                    <span id="userEmail">user@email.com</span>
+                                </div>
+                                <div class="dropdown-divider"></div>
+                                <button class="dropdown-item" onclick="exportToCSV()">📥 Export CSV</button>
+                                <button class="dropdown-item" onclick="loadMockData()">🎨 Load Demo Data</button>
+                                <div class="dropdown-divider"></div>
+                                <button class="dropdown-item danger" onclick="logout()">Log Out</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <!-- Guest Banner -->
+            <div class="guest-banner" id="guestBanner">
+                <div class="guest-banner-text">
+                    <strong>Create a free account</strong> to save your watchlist and access it from any device.
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-secondary btn-sm" onclick="loadMockData()">🎨 Load Demo</button>
+                    <button class="btn btn-primary btn-sm" onclick="openAuthModal('register')">Sign Up Free</button>
+                </div>
+            </div>
+
+            <!-- Watchlist Tab -->
+            <section class="page-section active" id="watchlistSection">
+                <!-- Dashboard -->
+                <div class="dashboard-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Portfolio Value</div>
+                        <div class="stat-value" id="totalValue">$0.00</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Cost</div>
+                        <div class="stat-value" id="totalCost">$0.00</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Profit</div>
+                        <div class="stat-value" id="totalProfit">$0.00</div>
+                        <div class="stat-change positive" id="profitChange" style="display:none;"></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Helmets Tracked</div>
+                        <div class="stat-value" id="cardCount">0/10</div>
+                    </div>
+                </div>
+
+                <!-- API Warning -->
+                <div class="api-warning" id="apiWarning" style="display:none;">
+                    <span style="font-size:1.2rem;">⚠️</span>
+                    <div>
+                        <strong>Rate Limit Protection:</strong> <span id="warningText"></span>
+                    </div>
+                </div>
+
+                <!-- Add Card Form -->
+                <div class="add-card-form">
+                    <form id="addCardForm">
+                        <div class="form-row">
+                            <div class="form-main-input">
+                                <div class="form-group">
+                                    <label class="form-label">Helmet Description / Search Query</label>
+                                    <div class="autocomplete-wrapper">
+                                        <input type="text" class="form-input" id="cardName" placeholder="e.g. Patrick Mahomes Signed Authentic Chiefs Helmet" autocomplete="off" required>
+                                        <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">+ Add</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="section-header">
+                    <h2 class="section-title"><span>💎</span> My Watchlist</h2>
+                    <div class="section-actions">
+                        <button class="btn btn-ghost btn-sm" onclick="exportToCSV()">📥 Export</button>
+                        <button class="btn btn-secondary btn-sm" onclick="refreshAllPrices()" id="refreshAllBtn">↻ Refresh All</button>
+                    </div>
+                </div>
+
+                <div id="watchlist" class="card-grid"></div>
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>HelmetPulse — Real-time helmet values from eBay sold listings</p>
+        </div>
+    </footer>
+
+    <!-- Auth Modal -->
+    <div class="modal-overlay" id="authModal">
+        <div class="modal" style="position:relative;">
+            <button class="modal-close" onclick="closeAuthModal()">×</button>
+            <div class="modal-header">
+                <div class="modal-title" id="authModalTitle">Sign Up</div>
+                <div class="modal-subtitle" id="authModalSubtitle">Create your free account</div>
+            </div>
+            <div class="modal-body">
+                <div class="auth-error" id="authError"></div>
+                <form class="auth-form" id="authForm">
+                    <div class="auth-input-group" id="nameGroup">
+                        <label class="auth-label">Name</label>
+                        <input type="text" class="auth-input" id="authName" placeholder="Your name">
+                    </div>
+                    <div class="auth-input-group">
+                        <label class="auth-label">Email</label>
+                        <input type="email" class="auth-input" id="authEmail" placeholder="you@example.com" required>
+                    </div>
+                    <div class="auth-input-group">
+                        <label class="auth-label">Password</label>
+                        <input type="password" class="auth-input" id="authPassword" placeholder="Min 6 characters" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;" id="authSubmitBtn">Sign Up</button>
+                </form>
+                <div class="auth-switch" id="authSwitch">
+                    Already have an account? <a onclick="switchAuthMode('login')">Log in</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============================================
+        // STATE
+        // ============================================
+        let watchlist = [];
+        let currentUser = null;
+        let authToken = localStorage.getItem('cardpulse_token');
+        let authMode = 'register';
+
+        const MAX_CARDS = 10;
+        const API_URL = ''; // Empty for relative URLs - works on any host
+        const MIN_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+        // ============================================
+        // AUTOCOMPLETE FUNCTIONALITY
+        // ============================================
+        let autocompleteTimeout = null;
+        let selectedAutocompleteIndex = -1;
+        let currentSuggestions = [];
+        let selectedHelmet = null; // Stores the selected helmet from autocomplete
+
+        function initAutocomplete() {
+            const input = document.getElementById('cardName');
+            const dropdown = document.getElementById('autocompleteDropdown');
+
+            if (!input || !dropdown) return;
+
+            // Handle input changes
+            input.addEventListener('input', (e) => {
+                const query = e.target.value.trim();
+
+                // Clear previous timeout
+                if (autocompleteTimeout) {
+                    clearTimeout(autocompleteTimeout);
+                }
+
+                // Hide dropdown if query is too short
+                if (query.length < 2) {
+                    hideAutocomplete();
+                    return;
+                }
+
+                // Show loading state
+                dropdown.innerHTML = '<div class="autocomplete-loading">Searching...</div>';
+                dropdown.classList.add('show');
+
+                // Debounce the API call
+                autocompleteTimeout = setTimeout(() => {
+                    fetchSuggestions(query);
+                }, 300);
+            });
+
+            // Handle keyboard navigation
+            input.addEventListener('keydown', (e) => {
+                if (!dropdown.classList.contains('show')) return;
+
+                const items = dropdown.querySelectorAll('.autocomplete-item');
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    selectedAutocompleteIndex = Math.min(selectedAutocompleteIndex + 1, items.length - 1);
+                    updateAutocompleteSelection(items);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    selectedAutocompleteIndex = Math.max(selectedAutocompleteIndex - 1, -1);
+                    updateAutocompleteSelection(items);
+                } else if (e.key === 'Enter' && selectedAutocompleteIndex >= 0) {
+                    e.preventDefault();
+                    selectSuggestion(currentSuggestions[selectedAutocompleteIndex]);
+                } else if (e.key === 'Escape') {
+                    hideAutocomplete();
+                }
+            });
+
+            // Hide dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.autocomplete-wrapper')) {
+                    hideAutocomplete();
+                }
+            });
+
+            // Hide dropdown on form submit
+            const form = document.getElementById('addCardForm');
+            if (form) {
+                form.addEventListener('submit', () => {
+                    hideAutocomplete();
+                });
+            }
+        }
+
+        async function fetchSuggestions(query) {
+            const dropdown = document.getElementById('autocompleteDropdown');
+
+            try {
+                const response = await fetch(`${API_URL}/api/helmets/suggestions?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                if (data.suggestions && data.suggestions.length > 0) {
+                    currentSuggestions = data.suggestions;
+                    renderSuggestions(data.suggestions);
+                } else {
+                    currentSuggestions = [];
+                    dropdown.innerHTML = '<div class="autocomplete-no-results">No matching helmets found. You can still add a custom search.</div>';
+                }
+            } catch (error) {
+                console.error('Autocomplete error:', error);
+                dropdown.innerHTML = '<div class="autocomplete-no-results">Search unavailable</div>';
+            }
+        }
+
+        function renderSuggestions(suggestions) {
+            const dropdown = document.getElementById('autocompleteDropdown');
+            selectedAutocompleteIndex = -1;
+
+            dropdown.innerHTML = suggestions.map((s, index) => {
+                // Build clean display name from structured data
+                const playerName = s.player || 'Unknown Player';
+                const team = s.team || '';
+                const helmetType = s.helmetType ? formatHelmetType(s.helmetType) : '';
+                const designType = s.designType ? formatDesignType(s.designType) : '';
+
+                // Build meta info array
+                const metaParts = [team, helmetType, designType].filter(Boolean);
+
+                return `
+                    <div class="autocomplete-item" data-index="${index}">
+                        <div class="autocomplete-item-name">${escapeHtml(playerName)}</div>
+                        <div class="autocomplete-item-meta">
+                            ${metaParts.map(part => `<span>${escapeHtml(part)}</span>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Add click handlers
+            dropdown.querySelectorAll('.autocomplete-item').forEach((item, index) => {
+                item.addEventListener('click', () => {
+                    selectSuggestion(suggestions[index]);
+                });
+            });
+        }
+
+        function selectSuggestion(suggestion) {
+            const input = document.getElementById('cardName');
+            if (input && suggestion) {
+                // Build a clean display name from structured data
+                const parts = [
+                    suggestion.player || 'Unknown',
+                    suggestion.team || '',
+                    suggestion.helmetType ? formatHelmetType(suggestion.helmetType) : '',
+                    suggestion.designType ? formatDesignType(suggestion.designType) : ''
+                ].filter(Boolean);
+                input.value = parts.join(' - ');
+                selectedHelmet = suggestion; // Store the full helmet object with ID
+            }
+            hideAutocomplete();
+        }
+
+        function updateAutocompleteSelection(items) {
+            items.forEach((item, index) => {
+                if (index === selectedAutocompleteIndex) {
+                    item.classList.add('selected');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
+
+        function hideAutocomplete() {
+            const dropdown = document.getElementById('autocompleteDropdown');
+            if (dropdown) {
+                dropdown.classList.remove('show');
+                dropdown.innerHTML = '';
+            }
+            selectedAutocompleteIndex = -1;
+            currentSuggestions = [];
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatHelmetType(type) {
+            const types = {
+                'mini': 'Mini',
+                'midi': 'Midi',
+                'fullsize-speedflex': 'Full-Size SpeedFlex',
+                'fullsize-authentic': 'Full-Size Authentic',
+                'fullsize-replica': 'Full-Size Replica',
+                'speedflex': 'SpeedFlex',
+                'speed-authentic': 'Authentic',
+                'speed-replica': 'Replica'
+            };
+            return types[type] || type;
+        }
+
+        function formatDesignType(type) {
+            if (!type) return '';
+            const designs = {
+                'regular': 'Regular',
+                'rave': 'Rave',
+                'salute': 'Salute to Service',
+                'salute-to-service': 'Salute to Service',
+                'camo': 'Camo',
+                'amp': 'Amp',
+                'lunar': 'Lunar Eclipse',
+                'lunar-eclipse': 'Lunar Eclipse',
+                'eclipse': 'Eclipse',
+                'alternate': 'Alternate',
+                'throwback': 'Throwback',
+                'flash': 'Flash',
+                'slate': 'Slate',
+                'flat-white': 'Flat White',
+                'chrome': 'Chrome',
+                'rivalries': 'Rivalries'
+            };
+            return designs[type.toLowerCase()] || type.charAt(0).toUpperCase() + type.slice(1);
+        }
+
+        // ============================================
+        // BACKGROUND PARTICLES
+        // ============================================
+        function createParticles() {
+            const particles = document.getElementById('particles');
+            const particleCount = 15;
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+
+                const size = Math.random() * 100 + 50;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
+                particle.style.animationDelay = Math.random() * 5 + 's';
+
+                particles.appendChild(particle);
+            }
+        }
+
+        // ============================================
+        // MOCK DATA FOR TESTING
+        // ============================================
+        function loadMockData() {
+            const mockCards = [
+                {
+                    id: 1,
+                    name: "Patrick Mahomes Signed Kansas City Chiefs SpeedFlex Helmet JSA",
+                    query: "Patrick Mahomes Signed Kansas City Chiefs SpeedFlex Helmet JSA",
+                    category: "speedflex",
+                    filterTags: ["Regular"],
+                    currentPrice: 1249.99,
+                    lastPrice: 1150.00,
+                    change: 8.7,
+                    minPrice: 1100.00,
+                    maxPrice: 1450.00,
+                    totalResults: 9,
+                    costBasis: 975.00,
+                    lastUpdated: new Date(Date.now() - 30 * 60000).toISOString(), // 30 min ago
+                    ebayUrl: "https://www.ebay.com/sch/i.html?_nkw=mahomes+signed+speedflex"
+                },
+                {
+                    id: 2,
+                    name: "Tom Brady Signed New England Patriots Throwback Speed Authentic Helmet Fanatics",
+                    query: "Tom Brady Signed New England Patriots Throwback Speed Authentic Helmet Fanatics",
+                    category: "speed-authentic",
+                    filterTags: ["Throwback"],
+                    currentPrice: 1899.00,
+                    lastPrice: 1750.00,
+                    change: 8.5,
+                    minPrice: 1650.00,
+                    maxPrice: 2100.00,
+                    totalResults: 8,
+                    costBasis: 1500.00,
+                    lastUpdated: new Date(Date.now() - 2 * 60 * 60000).toISOString(), // 2 hours ago
+                    ebayUrl: "https://www.ebay.com/sch/i.html?_nkw=brady+signed+patriots+throwback"
+                },
+                {
+                    id: 3,
+                    name: "Brock Purdy Signed San Francisco 49ers Rave Speed Replica Helmet Beckett",
+                    query: "Brock Purdy Signed San Francisco 49ers Rave Speed Replica Helmet Beckett",
+                    category: "speed-replica",
+                    filterTags: ["Rave"],
+                    currentPrice: 425.00,
+                    lastPrice: 395.00,
+                    change: 7.6,
+                    minPrice: 375.00,
+                    maxPrice: 499.00,
+                    totalResults: 14,
+                    costBasis: 350.00,
+                    lastUpdated: new Date(Date.now() - 1 * 60000).toISOString(), // 1 min ago
+                    ebayUrl: "https://www.ebay.com/sch/i.html?_nkw=purdy+signed+rave"
+                },
+                {
+                    id: 4,
+                    name: "Joe Burrow Signed Cincinnati Bengals Alternate Mini Helmet Beckett",
+                    query: "Joe Burrow Signed Cincinnati Bengals Alternate Mini Helmet Beckett",
+                    category: "mini",
+                    filterTags: ["Alternate"],
+                    currentPrice: 275.00,
+                    lastPrice: 265.00,
+                    change: 3.8,
+                    minPrice: 240.00,
+                    maxPrice: 320.00,
+                    totalResults: 18,
+                    costBasis: 225.00,
+                    lastUpdated: new Date(Date.now() - 10 * 60000).toISOString(), // 10 min ago
+                    ebayUrl: "https://www.ebay.com/sch/i.html?_nkw=burrow+signed+alternate"
+                },
+                {
+                    id: 5,
+                    name: "CJ Stroud Signed Houston Texans Salute to Service Midi SpeedFlex Helmet PSA/DNA",
+                    query: "CJ Stroud Signed Houston Texans Salute to Service Midi SpeedFlex Helmet PSA DNA",
+                    category: "midi-speedflex",
+                    filterTags: ["Salute to Service"],
+                    currentPrice: 799.00,
+                    lastPrice: 725.00,
+                    change: 10.2,
+                    minPrice: 675.00,
+                    maxPrice: 899.00,
+                    totalResults: 6,
+                    costBasis: 625.00,
+                    lastUpdated: new Date(Date.now() - 25 * 60 * 60000).toISOString(), // 25 hours ago
+                    ebayUrl: "https://www.ebay.com/sch/i.html?_nkw=stroud+signed+salute"
+                },
+                {
+                    id: 6,
+                    name: "Justin Jefferson Signed Minnesota Vikings Lunar Eclipse Mini Helmet JSA",
+                    query: "Justin Jefferson Signed Minnesota Vikings Lunar Eclipse Mini Helmet JSA",
+                    category: "mini",
+                    filterTags: ["Lunar Eclipse"],
+                    currentPrice: 349.99,
+                    lastPrice: 325.00,
+                    change: 7.7,
+                    minPrice: 299.00,
+                    maxPrice: 399.00,
+                    totalResults: 22,
+                    costBasis: 275.00,
+                    lastUpdated: new Date(Date.now() - 5 * 60000).toISOString(), // 5 min ago
+                    ebayUrl: "https://www.ebay.com/sch/i.html?_nkw=jefferson+signed+lunar"
+                },
+                {
+                    id: 7,
+                    name: "Josh Allen Signed Buffalo Bills Camo Speed Authentic Helmet Fanatics",
+                    query: "Josh Allen Signed Buffalo Bills Camo Speed Authentic Helmet Fanatics",
+                    category: "speed-authentic",
+                    filterTags: ["Camo"],
+                    currentPrice: 825.00,
+                    lastPrice: 795.00,
+                    change: 3.8,
+                    minPrice: 750.00,
+                    maxPrice: 925.00,
+                    totalResults: 11,
+                    costBasis: 700.00,
+                    lastUpdated: new Date(Date.now() - 15 * 60000).toISOString(), // 15 min ago
+                    ebayUrl: "https://www.ebay.com/sch/i.html?_nkw=allen+signed+camo"
+                }
+            ];
+
+            // Create a mock user
+            currentUser = {
+                name: "Demo User",
+                email: "demo@cardpulse.com"
+            };
+
+            watchlist = mockCards;
+            localStorage.setItem('cardpulse_watchlist', JSON.stringify(watchlist));
+            renderWatchlist();
+            updateDashboard();
+            updateAuthUI();
+            showToast('Mock data loaded! Explore the animations', 'success');
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            createParticles();
+            initTabs();
+            initAutocomplete();
+            initGradeCalculator();
+
+            // Check if user is logged in
+            if (authToken) {
+                await checkAuth();
+            } else {
+                // Load mock data for demo purposes
+                // Comment out this line if you want to test without mock data
+                loadMockData();
+            }
+
+            renderWatchlist();
+            updateDashboard();
+            updateAuthUI();
+        });
+
+        // ============================================
+        // AUTH FUNCTIONS
+        // ============================================
+        async function checkAuth() {
+            try {
+                const res = await fetch(`${API_URL}/api/auth/me`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    currentUser = data.user;
+                    await loadWatchlistFromServer();
+                } else {
+                    authToken = null;
+                    localStorage.removeItem('cardpulse_token');
+                }
+            } catch (e) {
+                console.log('Auth check failed:', e);
+            }
+        }
+
+        function openAuthModal(mode = 'register') {
+            authMode = mode;
+            const modal = document.getElementById('authModal');
+            const title = document.getElementById('authModalTitle');
+            const subtitle = document.getElementById('authModalSubtitle');
+            const nameGroup = document.getElementById('nameGroup');
+            const submitBtn = document.getElementById('authSubmitBtn');
+            const switchText = document.getElementById('authSwitch');
+
+            if (mode === 'login') {
+                title.textContent = 'Welcome Back';
+                subtitle.textContent = 'Log in to your account';
+                nameGroup.style.display = 'none';
+                submitBtn.textContent = 'Log In';
+                switchText.innerHTML = 'Don\'t have an account? <a onclick="switchAuthMode(\'register\')">Sign up</a>';
+            } else {
+                title.textContent = 'Sign Up';
+                subtitle.textContent = 'Create your free account';
+                nameGroup.style.display = 'block';
+                submitBtn.textContent = 'Sign Up';
+                switchText.innerHTML = 'Already have an account? <a onclick="switchAuthMode(\'login\')">Log in</a>';
+            }
+
+            document.getElementById('authError').classList.remove('show');
+            modal.classList.add('open');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('open');
+            document.getElementById('authForm').reset();
+        }
+
+        function switchAuthMode(mode) {
+            openAuthModal(mode);
+        }
+
+        document.getElementById('authForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            const name = document.getElementById('authName').value;
+            const errorEl = document.getElementById('authError');
+            const submitBtn = document.getElementById('authSubmitBtn');
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = authMode === 'login' ? 'Logging in...' : 'Creating account...';
+
+            try {
+                const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
+                const body = authMode === 'login' ? { email, password } : { email, password, name };
+
+                const res = await fetch(`${API_URL}${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.error || 'Authentication failed');
+                }
+
+                // Success!
+                authToken = data.token;
+                currentUser = data.user;
+                localStorage.setItem('cardpulse_token', authToken);
+
+                // Smart sync: merge local and server watchlists
+                const localWatchlist = [...watchlist];
+                await loadWatchlistFromServer();
+
+                // If server is empty but we had local cards, sync them up
+                if (watchlist.length === 0 && localWatchlist.length > 0) {
+                    watchlist = localWatchlist;
+                    await syncWatchlistToServer();
+                }
+
+                closeAuthModal();
+                updateAuthUI();
+                renderWatchlist();
+                showToast(authMode === 'login' ? 'Welcome back!' : 'Account created!', 'success');
+
+            } catch (error) {
+                errorEl.textContent = error.message;
+                errorEl.classList.add('show');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = authMode === 'login' ? 'Log In' : 'Sign Up';
+            }
+        });
+
+        async function logout() {
+            try {
+                await fetch(`${API_URL}/api/auth/logout`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+            } catch (e) {}
+
+            authToken = null;
+            currentUser = null;
+            watchlist = [];
+            localStorage.removeItem('cardpulse_token');
+            localStorage.removeItem('cardpulse_watchlist');
+            closeDropdown();
+            updateAuthUI();
+            renderWatchlist();
+            updateDashboard();
+            showToast('Logged out', 'success');
+        }
+
+        function updateAuthUI() {
+            const guestActions = document.getElementById('guestActions');
+            const userActions = document.getElementById('userActions');
+            const guestBanner = document.getElementById('guestBanner');
+
+            if (currentUser) {
+                guestActions.style.display = 'none';
+                userActions.style.display = 'flex';
+                guestBanner.style.display = 'none';
+
+                document.getElementById('userAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
+                document.getElementById('userName').textContent = currentUser.name;
+                document.getElementById('userEmail').textContent = currentUser.email;
+            } else {
+                guestActions.style.display = 'flex';
+                userActions.style.display = 'none';
+                guestBanner.style.display = 'flex';
+            }
+        }
+
+        function toggleDropdown() {
+            document.getElementById('userDropdown').classList.toggle('open');
+        }
+
+        function closeDropdown() {
+            document.getElementById('userDropdown').classList.remove('open');
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.user-dropdown')) closeDropdown();
+        });
+
+        // ============================================
+        // SYNC FUNCTIONS
+        // ============================================
+        async function loadWatchlistFromServer() {
+            if (!authToken) return;
+
+            try {
+                const res = await fetch(`${API_URL}/api/watchlist`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    watchlist = data.watchlist || [];
+                    localStorage.setItem('cardpulse_watchlist', JSON.stringify(watchlist));
+                    renderWatchlist();
+                    updateSyncStatus('synced');
+                }
+            } catch (e) {
+                console.log('Failed to load watchlist:', e);
+                updateSyncStatus('error');
+            }
+        }
+
+        async function syncWatchlistToServer() {
+            if (!authToken) return;
+
+            updateSyncStatus('syncing');
+
+            try {
+                const res = await fetch(`${API_URL}/api/watchlist`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ watchlist })
+                });
+
+                if (res.ok) {
+                    updateSyncStatus('synced');
+                } else {
+                    updateSyncStatus('error');
+                }
+            } catch (e) {
+                console.log('Sync failed:', e);
+                updateSyncStatus('error');
+            }
+        }
+
+        function updateSyncStatus(status) {
+            const el = document.getElementById('syncStatus');
+            if (status === 'syncing') {
+                el.innerHTML = '<span class="sync-icon syncing">🔄</span><span>Syncing...</span>';
+            } else if (status === 'synced') {
+                el.innerHTML = '<span class="sync-icon">☁️</span><span>Synced</span>';
+            } else {
+                el.innerHTML = '<span class="sync-icon">⚠️</span><span>Offline</span>';
+            }
+        }
+
+        // ============================================
+        // API RATE LIMITING
+        // ============================================
+        function canRefreshCard(card) {
+            if (!card.lastUpdated) return true;
+            const timeSinceUpdate = Date.now() - new Date(card.lastUpdated).getTime();
+            return timeSinceUpdate >= MIN_REFRESH_INTERVAL;
+        }
+
+        function getTimeSinceUpdate(lastUpdated) {
+            if (!lastUpdated) return null;
+            const ms = Date.now() - new Date(lastUpdated).getTime();
+            const minutes = Math.floor(ms / 60000);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+
+            if (days > 0) return `${days}d ago`;
+            if (hours > 0) return `${hours}h ago`;
+            if (minutes > 0) return `${minutes}m ago`;
+            return 'just now';
+        }
+
+        function getDataFreshness(lastUpdated) {
+            if (!lastUpdated) return 'stale';
+            const ms = Date.now() - new Date(lastUpdated).getTime();
+            const hours = ms / (1000 * 60 * 60);
+
+            if (hours < 1) return 'fresh';
+            if (hours < 24) return 'recent';
+            return 'stale';
+        }
+
+        function showApiWarning(message) {
+            const warning = document.getElementById('apiWarning');
+            document.getElementById('warningText').textContent = message;
+            warning.style.display = 'flex';
+            setTimeout(() => {
+                warning.style.display = 'none';
+            }, 5000);
+        }
+
+        // ============================================
+        // TABS
+        // ============================================
+        function initTabs() {
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+                    document.getElementById(tab.dataset.tab + 'Section').classList.add('active');
+                });
+            });
+        }
+
+        // ============================================
+        // DASHBOARD
+        // ============================================
+        function updateDashboard() {
+            // Reset stats if not logged in
+            if (!currentUser) {
+                document.getElementById('totalValue').textContent = '$0.00';
+                document.getElementById('totalCost').textContent = '$0.00';
+                document.getElementById('totalProfit').textContent = '$0.00';
+                document.getElementById('cardCount').textContent = '0/' + MAX_CARDS;
+                document.getElementById('profitChange').style.display = 'none';
+                return;
+            }
+
+            let totalValue = 0, totalCost = 0;
+            watchlist.forEach(card => {
+                if (card.currentPrice) totalValue += card.currentPrice;
+                if (card.costBasis) totalCost += card.costBasis;
+            });
+
+            const profit = totalValue - totalCost;
+            const profitPercent = totalCost > 0 ? (profit / totalCost) * 100 : 0;
+
+            document.getElementById('totalValue').textContent = '$' + totalValue.toFixed(2);
+            document.getElementById('totalCost').textContent = '$' + totalCost.toFixed(2);
+            document.getElementById('totalProfit').textContent = (profit >= 0 ? '+$' : '-$') + Math.abs(profit).toFixed(2);
+            document.getElementById('totalProfit').style.color = profit >= 0 ? 'var(--success)' : 'var(--danger)';
+            document.getElementById('cardCount').textContent = watchlist.length + '/' + MAX_CARDS;
+
+            const profitChangeEl = document.getElementById('profitChange');
+            if (totalCost > 0) {
+                profitChangeEl.style.display = 'inline-flex';
+                profitChangeEl.textContent = (profitPercent >= 0 ? '+' : '') + profitPercent.toFixed(1) + '%';
+                profitChangeEl.className = 'stat-change ' + (profitPercent >= 0 ? 'positive' : 'negative');
+            } else {
+                profitChangeEl.style.display = 'none';
+            }
+        }
+
+        // ============================================
+        // WATCHLIST
+        // ============================================
+        function renderWatchlist() {
+            const el = document.getElementById('watchlist');
+
+            // Require login to see watchlist
+            if (!currentUser) {
+                el.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🔐</div><h3>Sign in to view your watchlist</h3><p>Create a free account to start tracking helmets</p><button class="btn btn-primary" style="margin-top:16px;" onclick="openAuthModal(\'register\')">Get Started</button></div>';
+                return;
+            }
+
+            if (watchlist.length === 0) {
+                el.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">📭</div><h3>No helmets yet</h3><p>Add your first helmet above to start tracking</p></div>';
+                return;
+            }
+
+            el.innerHTML = watchlist.map((card, i) => {
+                const changeClass = card.change > 0 ? 'positive' : card.change < 0 ? 'negative' : '';
+                const profit = card.costBasis && card.currentPrice ? card.currentPrice - card.costBasis : null;
+                const filterTags = (card.filterTags || []).map(t => `<span class="card-tag filter-tag">${t}</span>`).join('');
+                const canRefresh = canRefreshCard(card);
+                const timeSince = getTimeSinceUpdate(card.lastUpdated);
+                const freshness = getDataFreshness(card.lastUpdated);
+
+                return `
+                    <div class="card-item ${changeClass}" id="card-${i}">
+                        <div class="card-header">
+                            <div class="card-info">
+                                <h3 class="card-title">${escapeHtml(card.name)}</h3>
+                                <div class="card-meta">
+                                    <span class="card-tag">${card.category}</span>
+                                    ${filterTags}
+                                    ${card.totalResults ? `<span class="card-tag">${card.totalResults} sales</span>` : ''}
+                                    ${timeSince ? `<span class="card-tag data-age ${freshness}">${timeSince}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="card-actions">
+                                <button class="card-action-btn" onclick="sendToGradeCalc(${i})" title="Grade or Nah?">🎯</button>
+                                <button class="card-action-btn" onclick="refreshCard(${i})" title="${canRefresh ? 'Refresh' : 'Wait 5 minutes'}" ${!canRefresh ? 'disabled' : ''}>↻</button>
+                                <button class="card-action-btn delete" onclick="deleteCard(${i})" title="Delete">×</button>
+                            </div>
+                        </div>
+                        ${card.totalResults === 0 ? `
+                        <div class="no-comps-state">
+                            <div class="no-comps-icon">📊</div>
+                            <div class="no-comps-text">No Comps Found</div>
+                            <div class="no-comps-hint">Try checking the spelling or search terms</div>
+                        </div>
+                        ` : `
+                        <div class="card-prices">
+                            <div class="price-block">
+                                <div class="price-label">Current Value</div>
+                                <div class="price-value">${card.currentPrice ? '$' + card.currentPrice.toFixed(2) : '—'}</div>
+                            </div>
+                            <div class="price-block">
+                                <div class="price-label">Last Week</div>
+                                <div class="price-value">${card.lastPrice ? '$' + card.lastPrice.toFixed(2) : '—'}</div>
+                            </div>
+                        </div>
+                        `}
+                        ${card.totalResults !== 0 && card.minPrice && card.maxPrice ? `<div class="price-range">Range: $${card.minPrice.toFixed(2)} — $${card.maxPrice.toFixed(2)}</div>` : ''}
+                        ${card.totalResults !== 0 ? `<span class="change-badge ${changeClass}">${card.change !== null ? (card.change > 0 ? '+' : '') + card.change.toFixed(1) + '%' : 'No data yet'}</span>` : ''}
+                        <div class="cost-basis-row">
+                            <span class="cost-label">Cost:</span>
+                            <div class="cost-input-wrap">
+                                <span>$</span>
+                                <input type="number" class="cost-input" value="${card.costBasis || ''}" placeholder="0.00" step="0.01" onchange="updateCostBasis(${i}, this.value)">
+                            </div>
+                            ${profit !== null ? `<span class="profit-display ${profit >= 0 ? 'profit' : 'loss'}">${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}</span>` : ''}
+                        </div>
+                        <div class="card-footer">
+                            <a href="${card.ebayUrl || buildEbayUrl(card.query)}" target="_blank" class="comps-link">View comps →</a>
+                            <span class="last-updated">${card.lastUpdated ? formatDate(card.lastUpdated) : ''}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            updateDashboard();
+        }
+
+        // ============================================
+        // CARD MANAGEMENT
+        // ============================================
+        document.getElementById('addCardForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Require login to add cards
+            if (!currentUser) {
+                openAuthModal('register');
+                return;
+            }
+
+            if (watchlist.length >= MAX_CARDS) {
+                showToast('Watchlist full! Max ' + MAX_CARDS + ' cards.', 'error');
+                return;
+            }
+
+            const name = document.getElementById('cardName').value.trim();
+
+            const card = {
+                id: Date.now(),
+                name,
+                query: selectedHelmet ? selectedHelmet.name : name, // Use original name for search
+                category: 'helmet',
+                filterTags: [],
+                currentPrice: null,
+                lastPrice: null,
+                change: null,
+                costBasis: null,
+                lastUpdated: null,
+                helmetId: selectedHelmet ? selectedHelmet.id : null,
+                helmetIds: selectedHelmet && selectedHelmet.ids ? selectedHelmet.ids : null, // Grouped IDs
+                player: selectedHelmet ? selectedHelmet.player : null,
+                team: selectedHelmet ? selectedHelmet.team : null,
+                helmetType: selectedHelmet ? selectedHelmet.helmetType : null,
+                designType: selectedHelmet ? selectedHelmet.designType : null
+            };
+
+            watchlist.push(card);
+            saveWatchlist();
+            renderWatchlist();
+            document.getElementById('addCardForm').reset();
+            selectedHelmet = null; // Clear selected helmet
+
+            showToast('Helmet added! Fetching prices...', 'success');
+            fetchPriceData(watchlist.length - 1);
+        });
+
+        function deleteCard(index) {
+            watchlist.splice(index, 1);
+            saveWatchlist();
+            renderWatchlist();
+            showToast('Helmet removed', 'success');
+        }
+
+        function updateCostBasis(index, value) {
+            watchlist[index].costBasis = parseFloat(value) || null;
+            saveWatchlist();
+            renderWatchlist();
+        }
+
+        async function refreshCard(index) {
+            const card = watchlist[index];
+
+            if (!canRefreshCard(card)) {
+                const timeSinceUpdate = Date.now() - new Date(card.lastUpdated).getTime();
+                const minutesLeft = Math.ceil((MIN_REFRESH_INTERVAL - timeSinceUpdate) / 60000);
+                showApiWarning(`Please wait ${minutesLeft} more minute${minutesLeft > 1 ? 's' : ''} before refreshing this helmet.`);
+                return;
+            }
+
+            const cardEl = document.getElementById(`card-${index}`);
+            cardEl.classList.add('refreshing');
+
+            showToast('Refreshing...', 'success');
+            await fetchPriceData(index);
+
+            cardEl.classList.remove('refreshing');
+        }
+
+        async function refreshAllPrices() {
+            if (watchlist.length === 0) return;
+
+            // Count how many cards need refresh
+            const staleCards = watchlist.filter(card => canRefreshCard(card));
+
+            if (staleCards.length === 0) {
+                showApiWarning('All helmets were recently updated. Please wait before refreshing again.');
+                return;
+            }
+
+            if (staleCards.length < watchlist.length) {
+                showApiWarning(`Only ${staleCards.length} of ${watchlist.length} helmets will be refreshed (others updated recently).`);
+            } else {
+                showApiWarning(`Refreshing ${watchlist.length} helmets. This will use ${watchlist.length} API credits.`);
+            }
+
+            const btn = document.getElementById('refreshAllBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Refreshing...';
+
+            let refreshed = 0;
+            for (let i = 0; i < watchlist.length; i++) {
+                if (canRefreshCard(watchlist[i])) {
+                    const cardEl = document.getElementById(`card-${i}`);
+                    if (cardEl) cardEl.classList.add('refreshing');
+
+                    await fetchPriceData(i);
+                    refreshed++;
+
+                    if (cardEl) cardEl.classList.remove('refreshing');
+
+                    if (i < watchlist.length - 1) {
+                        await sleep(1500); // Delay between requests
+                    }
+                }
+            }
+
+            btn.disabled = false;
+            btn.textContent = '↻ Refresh All';
+            showToast(`${refreshed} helmet${refreshed > 1 ? 's' : ''} updated!`, 'success');
+        }
+
+        function saveWatchlist() {
+            localStorage.setItem('cardpulse_watchlist', JSON.stringify(watchlist));
+            if (authToken) syncWatchlistToServer();
+        }
+
+        // ============================================
+        // PRICE FETCHING
+        // ============================================
+        async function fetchPriceData(index) {
+            const card = watchlist[index];
+            if (!card) return;
+
+            try {
+                let data;
+
+                // If we have grouped helmet IDs, use the grouped-prices endpoint
+                if (card.helmetIds && card.helmetIds.length > 0) {
+                    console.log(`Fetching grouped prices for ${card.helmetIds.length} helmet IDs`);
+                    const dbRes = await fetch(`${API_URL}/api/helmets/grouped-prices`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ids: card.helmetIds })
+                    });
+
+                    if (dbRes.ok) {
+                        data = await dbRes.json();
+                        if (data.medianPrice !== null && data.medianPrice !== undefined) {
+                            console.log(`Found grouped median price: $${data.medianPrice} from ${data.priceCount} prices`);
+                        } else {
+                            data = null;
+                        }
+                    }
+                }
+                // Otherwise try single helmet ID
+                else if (card.helmetId) {
+                    console.log(`Fetching prices from database for helmet ID: ${card.helmetId}`);
+                    const dbRes = await fetch(`${API_URL}/api/helmets/${card.helmetId}/prices`);
+
+                    if (dbRes.ok) {
+                        data = await dbRes.json();
+                        if (data.medianPrice !== null && data.medianPrice !== undefined) {
+                            console.log(`Found database price: $${data.medianPrice}`);
+                        } else {
+                            data = null;
+                        }
+                    }
+                }
+
+                // Fall back to eBay search if no database prices
+                if (!data || data.medianPrice === null) {
+                    console.log(`Searching eBay for: ${card.query}`);
+                    const res = await fetch(`${API_URL}/api/prices`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query: card.query, category: card.category })
+                    });
+
+                    if (!res.ok) throw new Error('Server error');
+                    data = await res.json();
+                }
+
+                card.lastPrice = card.currentPrice;
+                card.currentPrice = data.medianPrice;
+                card.minPrice = data.minPrice;
+                card.maxPrice = data.maxPrice;
+                card.totalResults = data.totalResults || data.priceCount || 0;
+                card.ebayUrl = data.ebayUrl;
+                card.source = data.source || 'ebay';
+                card.lastUpdated = new Date().toISOString();
+
+                if (card.lastPrice && card.currentPrice) {
+                    card.change = ((card.currentPrice - card.lastPrice) / card.lastPrice) * 100;
+                }
+
+                saveWatchlist();
+                renderWatchlist();
+            } catch (e) {
+                console.log('Fetch failed:', e);
+                showToast('Failed to fetch price data', 'error');
+            }
+        }
+
+        // ============================================
+        // GRADE CALCULATOR
+        // ============================================
+        let selectedGrade = 10, selectedCost = 50;
+
+        function initGradeCalculator() {
+            document.querySelectorAll('#gradeSelect .segment-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#gradeSelect .segment-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedGrade = parseInt(btn.dataset.grade);
+                });
+            });
+            document.querySelectorAll('#serviceSelect .segment-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#serviceSelect .segment-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedCost = parseInt(btn.dataset.cost);
+                });
+            });
+        }
+
+        function calculateGrade() {
+            const rawValue = parseFloat(document.getElementById('gradeRawValue').value);
+            if (!rawValue || rawValue <= 0) { showToast('Enter a valid value', 'error'); return; }
+
+            const mult = { 10: 3.5, 9: 1.6, 8: 1.15 }[selectedGrade];
+            const gradedValue = rawValue * mult;
+            const totalCost = rawValue + selectedCost;
+            const netProfit = gradedValue - totalCost;
+            const roi = (netProfit / totalCost) * 100;
+
+            document.getElementById('gradeResult').style.display = 'block';
+            const verdict = document.getElementById('gradeVerdict');
+
+            if (netProfit > 30 && roi > 30) {
+                verdict.className = 'result-verdict grade';
+                document.getElementById('verdictIcon').textContent = '✅';
+                document.getElementById('verdictText').textContent = 'SEND IT!';
+                document.getElementById('verdictNote').textContent = `Strong ROI of ${roi.toFixed(0)}%.`;
+            } else if (netProfit > 10 && roi > 15) {
+                verdict.className = 'result-verdict maybe';
+                document.getElementById('verdictIcon').textContent = '🤔';
+                document.getElementById('verdictText').textContent = 'MAYBE';
+                document.getElementById('verdictNote').textContent = `Marginal profit of $${netProfit.toFixed(2)}.`;
+            } else {
+                verdict.className = 'result-verdict skip';
+                document.getElementById('verdictIcon').textContent = '❌';
+                document.getElementById('verdictText').textContent = 'SKIP IT';
+                document.getElementById('verdictNote').textContent = netProfit < 0 ? `You'd lose $${Math.abs(netProfit).toFixed(2)}.` : 'Not worth the wait.';
+            }
+
+            document.getElementById('gradedValue').textContent = '$' + gradedValue.toFixed(2);
+            document.getElementById('totalGradeCost').textContent = '$' + totalCost.toFixed(2);
+            document.getElementById('netProfit').textContent = (netProfit >= 0 ? '+$' : '-$') + Math.abs(netProfit).toFixed(2);
+            document.getElementById('netProfit').style.color = netProfit >= 0 ? 'var(--success)' : 'var(--danger)';
+        }
+
+        function sendToGradeCalc(index) {
+            const card = watchlist[index];
+            if (!card || !card.currentPrice) {
+                showToast('No price data yet', 'error');
+                return;
+            }
+            // Switch to Tools tab
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector('[data-tab="tools"]').classList.add('active');
+            document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+            document.getElementById('toolsSection').classList.add('active');
+            // Fill in the raw value
+            document.getElementById('gradeRawValue').value = card.currentPrice.toFixed(2);
+            // Auto-calculate
+            calculateGrade();
+        }
+
+        // ============================================
+        // EXPORT
+        // ============================================
+        function exportToCSV() {
+            if (!watchlist.length) { showToast('No helmets to export', 'error'); return; }
+            const rows = [['Name', 'Category', 'Filters', 'Value', 'Cost', 'Profit', 'Updated']];
+            watchlist.forEach(c => rows.push([c.name, c.category, (c.filterTags||[]).join(', '), c.currentPrice||'', c.costBasis||'', c.currentPrice && c.costBasis ? (c.currentPrice - c.costBasis).toFixed(2) : '', c.lastUpdated ? new Date(c.lastUpdated).toLocaleDateString() : '']));
+            const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+            a.download = 'cardpulse-watchlist.csv';
+            a.click();
+            showToast('Exported!', 'success');
+        }
+
+        // ============================================
+        // UTILITIES
+        // ============================================
+        function buildEbayUrl(query) {
+            return `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}&LH_Sold=1&LH_Complete=1&_sop=13`;
+        }
+
+        function showToast(msg, type = 'success') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = `toast ${type} show`;
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function formatDate(d) { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+        function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+    </script>
+</body>
+</html>

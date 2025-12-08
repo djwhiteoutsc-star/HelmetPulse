@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: helmetpulse
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: EBAY_APP_ID
+        sync: false
+      - key: EBAY_CERT_ID
+        sync: false
+      - key: AIRTABLE_API_KEY
+        sync: false
+      - key: AIRTABLE_BASE_ID
+        sync: false
+      - key: FIRECRAWL_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false

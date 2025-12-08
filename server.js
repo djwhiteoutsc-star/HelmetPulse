@@ -48,11 +48,11 @@ const supabase = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPAB
 let ebayAccessToken = null;
 let ebayTokenExpiry = 0;
 
-// Airtable table names
+// Airtable table IDs (more reliable than names)
 const TABLES = {
-    USERS: 'Users',
-    JWT_TOKENS: 'JWT Tokens',
-    ACCESS_LOGS: 'Access Logs'
+    USERS: 'tblGhbSWtKe9R57dr',
+    JWT_TOKENS: 'tblZzDYW0cr7JtsqK',
+    ACCESS_LOGS: 'tblzaGZy1LYvABqSf'
 };
 
 // Cache for price lookups (24 hours to reduce API calls)

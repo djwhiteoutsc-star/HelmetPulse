@@ -97,6 +97,45 @@ app.use('/api/', limiter);
 // ============================================
 const AIRTABLE_BASE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}`;
 
+// Debug endpoint to test Airtable connection
+app.get('/api/debug/airtable', async (req, res) => {
+    const testUrl = `${AIRTABLE_BASE_URL}/${TABLES.USERS}?maxRecords=1`;
+
+    console.log('=== AIRTABLE DEBUG ===');
+    console.log('Base ID:', AIRTABLE_BASE_ID);
+    console.log('API Key (first 20 chars):', AIRTABLE_API_KEY ? AIRTABLE_API_KEY.substring(0, 20) + '...' : 'NOT SET');
+    console.log('Table ID:', TABLES.USERS);
+    console.log('Full URL:', testUrl);
+
+    try {
+        const response = await fetch(testUrl, {
+            headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
+        });
+
+        const data = await response.text();
+        console.log('Response status:', response.status);
+        console.log('Response body:', data);
+
+        res.json({
+            baseId: AIRTABLE_BASE_ID || 'NOT SET',
+            apiKeySet: !!AIRTABLE_API_KEY,
+            apiKeyPrefix: AIRTABLE_API_KEY ? AIRTABLE_API_KEY.substring(0, 20) : null,
+            tableId: TABLES.USERS,
+            testUrl: testUrl,
+            responseStatus: response.status,
+            responseBody: JSON.parse(data)
+        });
+    } catch (error) {
+        res.json({
+            baseId: AIRTABLE_BASE_ID || 'NOT SET',
+            apiKeySet: !!AIRTABLE_API_KEY,
+            tableId: TABLES.USERS,
+            testUrl: testUrl,
+            error: error.message
+        });
+    }
+});
+
 // Format date for Airtable (MM/DD/YYYY)
 function formatDateForAirtable(date = new Date()) {
     return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;

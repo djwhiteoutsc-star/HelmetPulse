@@ -480,6 +480,116 @@ app.post('/api/auth/logout', authenticateToken, async (req, res) => {
     }
 });
 
+// Forgot Password - Request reset token
+app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ error: 'Email is required' });
+        }
+
+        const user = await findUserByEmail(email);
+
+        if (!user) {
+            // Don't reveal if email exists or not
+            return res.json({ success: true, message: 'If that email exists, a reset link has been sent' });
+        }
+
+        // Generate reset token (6 random digits)
+        const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+        const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+        // Store reset token in user record
+        await airtableRequest(TABLES.USERS, 'PATCH', {
+            fields: {
+                'Reset Token': resetToken,
+                'Reset Token Expires': formatDateForAirtable(resetExpires)
+            }
+        }, user.id);
+
+        // Log the reset request
+        await logAccess(user.id, 'Password Reset Requested', req, null, `Reset token generated for ${email}`);
+
+        console.log(`✓ Password reset requested for: ${email} (Token: ${resetToken})`);
+
+        // TODO: Send email with reset token
+        // For now, just return success (user would receive email with token)
+
+        res.json({
+            success: true,
+            message: 'If that email exists, a reset link has been sent',
+            // Remove this in production - only for testing
+            _debug_token: resetToken
+        });
+
+    } catch (error) {
+        console.error('Forgot password error:', error);
+        res.status(500).json({ error: 'Failed to process request' });
+    }
+});
+
+// Reset Password - Use token to set new password
+app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+        const { email, token, newPassword } = req.body;
+
+        if (!email || !token || !newPassword) {
+            return res.status(400).json({ error: 'Email, token, and new password are required' });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        }
+
+        const user = await findUserByEmail(email);
+
+        if (!user) {
+            return res.status(400).json({ error: 'Invalid reset token' });
+        }
+
+        // Verify token and expiration
+        const storedToken = user.fields['Reset Token'];
+        const expiresAt = user.fields['Reset Token Expires'] ? new Date(user.fields['Reset Token Expires']) : null;
+
+        if (!storedToken || storedToken !== token) {
+            await logAccess(user.id, 'Password Reset Failed', req, null, 'Invalid token');
+            return res.status(400).json({ error: 'Invalid reset token' });
+        }
+
+        if (!expiresAt || expiresAt < new Date()) {
+            await logAccess(user.id, 'Password Reset Failed', req, null, 'Expired token');
+            return res.status(400).json({ error: 'Reset token has expired' });
+        }
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Update password and clear reset token
+        await airtableRequest(TABLES.USERS, 'PATCH', {
+            fields: {
+                'Password Hash': hashedPassword,
+                'Reset Token': '',
+                'Reset Token Expires': ''
+            }
+        }, user.id);
+
+        // Log successful password reset
+        await logAccess(user.id, 'Password Reset Success', req, null, 'Password changed via reset token');
+
+        console.log(`✓ Password reset successful for: ${email}`);
+
+        res.json({
+            success: true,
+            message: 'Password reset successful. You can now log in with your new password.'
+        });
+
+    } catch (error) {
+        console.error('Reset password error:', error);
+        res.status(500).json({ error: 'Failed to reset password' });
+    }
+});
+
 // Get current user
 app.get('/api/auth/me', authenticateToken, (req, res) => {
     res.json({

@@ -471,6 +471,32 @@
 
         .auth-error.show { display: block; }
 
+        .auth-success {
+            padding: 12px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--success);
+            border-radius: var(--radius-sm);
+            color: var(--success);
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+        }
+
+        .auth-forgot {
+            text-align: right;
+            margin-top: -8px;
+            margin-bottom: 16px;
+            font-size: 0.85rem;
+        }
+
+        .auth-forgot a {
+            color: var(--accent-primary);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .auth-forgot a:hover { text-decoration: underline; opacity: 0.8; }
+
         .auth-switch {
             text-align: center;
             color: var(--text-secondary);
@@ -2038,10 +2064,54 @@
                         <label class="auth-label">Password</label>
                         <input type="password" class="auth-input" id="authPassword" placeholder="Min 6 characters" required>
                     </div>
+                    <div class="auth-forgot" id="authForgot" style="display:none;">
+                        <a onclick="openResetModal()">Forgot password?</a>
+                    </div>
                     <button type="submit" class="btn btn-primary" style="width:100%;" id="authSubmitBtn">Sign Up</button>
                 </form>
                 <div class="auth-switch" id="authSwitch">
                     Already have an account? <a onclick="switchAuthMode('login')">Log in</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Password Reset Modal -->
+    <div class="modal-overlay" id="resetModal">
+        <div class="modal" style="position:relative;">
+            <button class="modal-close" onclick="closeResetModal()">×</button>
+            <div class="modal-header">
+                <div class="modal-title" id="resetModalTitle">Reset Password</div>
+                <div class="modal-subtitle" id="resetModalSubtitle">Enter your email to receive a reset code</div>
+            </div>
+            <div class="modal-body">
+                <div class="auth-error" id="resetError"></div>
+                <div class="auth-success" id="resetSuccess" style="display:none;"></div>
+
+                <!-- Step 1: Request Token -->
+                <form class="auth-form" id="resetRequestForm">
+                    <div class="auth-input-group">
+                        <label class="auth-label">Email</label>
+                        <input type="email" class="auth-input" id="resetEmail" placeholder="you@example.com" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;" id="resetRequestBtn">Send Reset Code</button>
+                </form>
+
+                <!-- Step 2: Enter Token and New Password -->
+                <form class="auth-form" id="resetPasswordForm" style="display:none;">
+                    <div class="auth-input-group">
+                        <label class="auth-label">Reset Code</label>
+                        <input type="text" class="auth-input" id="resetToken" placeholder="6-digit code" maxlength="6" required>
+                    </div>
+                    <div class="auth-input-group">
+                        <label class="auth-label">New Password</label>
+                        <input type="password" class="auth-input" id="resetNewPassword" placeholder="Min 6 characters" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;" id="resetPasswordBtn">Reset Password</button>
+                </form>
+
+                <div class="auth-switch">
+                    <a onclick="closeResetModal(); openAuthModal('login')">Back to login</a>
                 </div>
             </div>
         </div>
@@ -2343,17 +2413,20 @@
             const nameGroup = document.getElementById('nameGroup');
             const submitBtn = document.getElementById('authSubmitBtn');
             const switchText = document.getElementById('authSwitch');
+            const forgotLink = document.getElementById('authForgot');
 
             if (mode === 'login') {
                 title.textContent = 'Welcome Back';
                 subtitle.textContent = 'Log in to your account';
                 nameGroup.style.display = 'none';
+                forgotLink.style.display = 'block';
                 submitBtn.textContent = 'Log In';
                 switchText.innerHTML = 'Don\'t have an account? <a onclick="switchAuthMode(\'register\')">Sign up</a>';
             } else {
                 title.textContent = 'Sign Up';
                 subtitle.textContent = 'Create your free account';
                 nameGroup.style.display = 'block';
+                forgotLink.style.display = 'none';
                 submitBtn.textContent = 'Sign Up';
                 switchText.innerHTML = 'Already have an account? <a onclick="switchAuthMode(\'login\')">Log in</a>';
             }
@@ -2447,6 +2520,116 @@
             updateDashboard();
             showToast('Logged out', 'success');
         }
+
+        // ============================================
+        // PASSWORD RESET
+        // ============================================
+        let resetEmailStored = '';
+
+        function openResetModal() {
+            closeAuthModal();
+            document.getElementById('resetModal').classList.add('open');
+            document.getElementById('resetError').classList.remove('show');
+            document.getElementById('resetSuccess').style.display = 'none';
+            document.getElementById('resetRequestForm').style.display = 'block';
+            document.getElementById('resetPasswordForm').style.display = 'none';
+            document.getElementById('resetRequestForm').reset();
+            document.getElementById('resetPasswordForm').reset();
+        }
+
+        function closeResetModal() {
+            document.getElementById('resetModal').classList.remove('open');
+        }
+
+        // Step 1: Request reset token
+        document.getElementById('resetRequestForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('resetEmail').value;
+            const errorEl = document.getElementById('resetError');
+            const successEl = document.getElementById('resetSuccess');
+            const submitBtn = document.getElementById('resetRequestBtn');
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending...';
+            errorEl.classList.remove('show');
+            successEl.style.display = 'none';
+
+            try {
+                const res = await fetch(`${API_URL}/api/auth/forgot-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.error || 'Failed to send reset code');
+                }
+
+                // Store email for next step
+                resetEmailStored = email;
+
+                // Show success message and token form
+                successEl.textContent = data.message + (data._debug_token ? ` (Code: ${data._debug_token})` : '');
+                successEl.style.display = 'block';
+                document.getElementById('resetRequestForm').style.display = 'none';
+                document.getElementById('resetPasswordForm').style.display = 'block';
+                document.getElementById('resetModalSubtitle').textContent = 'Check your email for the reset code';
+
+            } catch (error) {
+                errorEl.textContent = error.message;
+                errorEl.classList.add('show');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Send Reset Code';
+            }
+        });
+
+        // Step 2: Reset password with token
+        document.getElementById('resetPasswordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const token = document.getElementById('resetToken').value;
+            const newPassword = document.getElementById('resetNewPassword').value;
+            const errorEl = document.getElementById('resetError');
+            const submitBtn = document.getElementById('resetPasswordBtn');
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Resetting...';
+            errorEl.classList.remove('show');
+
+            try {
+                const res = await fetch(`${API_URL}/api/auth/reset-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: resetEmailStored,
+                        token,
+                        newPassword
+                    })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.error || 'Failed to reset password');
+                }
+
+                // Success!
+                closeResetModal();
+                showToast('Password reset successful! Please log in.', 'success');
+                openAuthModal('login');
+
+            } catch (error) {
+                errorEl.textContent = error.message;
+                errorEl.classList.add('show');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Reset Password';
+            }
+        });
 
         function updateAuthUI() {
             const guestActions = document.getElementById('guestActions');

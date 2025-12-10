@@ -16,6 +16,7 @@ const cheerio = require('cheerio');
 const rateLimit = require('express-rate-limit');
 const NodeCache = require('node-cache');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
@@ -36,8 +37,32 @@ const EBAY_APP_ID = process.env.EBAY_APP_ID;
 const EBAY_CERT_ID = process.env.EBAY_CERT_ID;
 const EBAY_ENVIRONMENT = 'PRODUCTION'; // PRODUCTION for real sold prices (5K calls/day)
 
+// Email Configuration
+const EMAIL_HOST = process.env.EMAIL_HOST;
+const EMAIL_PORT = process.env.EMAIL_PORT || 587;
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_PASS = process.env.EMAIL_PASS;
+const EMAIL_FROM = process.env.EMAIL_FROM || 'HelmetPulse <noreply@helmetpulse.com>';
+
 // Initialize Anthropic client
 const anthropic = ANTHROPIC_API_KEY ? new Anthropic({ apiKey: ANTHROPIC_API_KEY }) : null;
+
+// Initialize Nodemailer transporter
+let emailTransporter = null;
+if (EMAIL_HOST && EMAIL_USER && EMAIL_PASS) {
+    emailTransporter = nodemailer.createTransport({
+        host: EMAIL_HOST,
+        port: EMAIL_PORT,
+        secure: EMAIL_PORT == 465, // true for 465, false for other ports
+        auth: {
+            user: EMAIL_USER,
+            pass: EMAIL_PASS
+        }
+    });
+    console.log('✓ Email configured');
+} else {
+    console.log('⚠ Email not configured - password reset codes will be logged only');
+}
 
 // Initialize Supabase client for helmet data
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -480,6 +505,43 @@ app.post('/api/auth/logout', authenticateToken, async (req, res) => {
     }
 });
 
+// ============================================
+// EMAIL HELPERS
+// ============================================
+async function sendResetEmail(email, resetToken, userName) {
+    if (!emailTransporter) {
+        console.log(`⚠ Email not configured - Reset code for ${email}: ${resetToken}`);
+        return false;
+    }
+
+    try {
+        await emailTransporter.sendMail({
+            from: EMAIL_FROM,
+            to: email,
+            subject: 'Reset Your HelmetPulse Password',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #6366f1;">Reset Your Password</h2>
+                    <p>Hi ${userName || 'there'},</p>
+                    <p>We received a request to reset your HelmetPulse password. Use the code below to reset your password:</p>
+                    <div style="background: #f3f4f6; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
+                        <h1 style="color: #1f2937; letter-spacing: 8px; margin: 0; font-size: 32px;">${resetToken}</h1>
+                    </div>
+                    <p>This code will expire in <strong>1 hour</strong>.</p>
+                    <p>If you didn't request this, you can safely ignore this email.</p>
+                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+                    <p style="color: #6b7280; font-size: 14px;">HelmetPulse - Real-time helmet price tracking</p>
+                </div>
+            `
+        });
+        console.log(`✓ Reset email sent to ${email}`);
+        return true;
+    } catch (error) {
+        console.error('Failed to send reset email:', error);
+        return false;
+    }
+}
+
 // Forgot Password - Request reset token
 app.post('/api/auth/forgot-password', async (req, res) => {
     try {
@@ -511,17 +573,21 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         // Log the reset request
         await logAccess(user.id, 'Password Reset Requested', req, null, `Reset token generated for ${email}`);
 
-        console.log(`✓ Password reset requested for: ${email} (Token: ${resetToken})`);
+        // Send email with reset token
+        const userName = user.fields['Full Name'];
+        await sendResetEmail(email, resetToken, userName);
 
-        // TODO: Send email with reset token
-        // For now, just return success (user would receive email with token)
-
-        res.json({
+        const response = {
             success: true,
-            message: 'If that email exists, a reset link has been sent',
-            // Remove this in production - only for testing
-            _debug_token: resetToken
-        });
+            message: 'If that email exists, a reset code has been sent to your email'
+        };
+
+        // Include debug token only if email is not configured (for testing)
+        if (!emailTransporter) {
+            response._debug_token = resetToken;
+        }
+
+        res.json(response);
 
     } catch (error) {
         console.error('Forgot password error:', error);

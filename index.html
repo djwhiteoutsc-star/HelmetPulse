@@ -1307,10 +1307,6 @@
             100% { transform: scale(1); }
         }
 
-        .result-verdict.grade { color: var(--success); }
-        .result-verdict.skip { color: var(--danger); }
-        .result-verdict.maybe { color: var(--warning); }
-
         .result-breakdown {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -1400,6 +1396,492 @@
 
         .guest-banner-text { font-size: 0.9rem; color: var(--text-secondary); }
         .guest-banner-text strong { color: var(--accent-primary); }
+
+        /* ============================================
+           MOBILE OPTIMIZATIONS
+           ============================================ */
+
+        /* Tablet & Below (768px) */
+        @media (max-width: 768px) {
+            /* Container & Spacing */
+            .container {
+                padding: 0 16px;
+            }
+
+            /* Header */
+            header {
+                padding: 12px 0;
+            }
+
+            .header-content {
+                gap: 12px;
+            }
+
+            .logo {
+                gap: 8px;
+            }
+
+            .logo-icon {
+                width: 34px;
+                height: 34px;
+                font-size: 16px;
+            }
+
+            .logo-text {
+                font-size: 1.15rem;
+            }
+
+            /* Navigation Tabs - Horizontal scroll on tablet */
+            .nav-tabs {
+                overflow-x: auto;
+                overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                gap: 2px;
+                padding: 3px;
+            }
+
+            .nav-tabs::-webkit-scrollbar {
+                display: none;
+            }
+
+            .nav-tab {
+                padding: 8px 14px;
+                font-size: 0.8rem;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+
+            /* User Menu */
+            .user-avatar {
+                width: 30px;
+                height: 30px;
+                font-size: 0.8rem;
+            }
+
+            /* Dashboard Stats Grid */
+            .dashboard-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+
+            .stat-card {
+                padding: 16px;
+            }
+
+            .stat-value {
+                font-size: 1.35rem;
+            }
+
+            /* Card Grid - 2 columns on tablet */
+            .card-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+
+            .card-item {
+                padding: 16px;
+            }
+
+            .card-title {
+                font-size: 0.85rem;
+            }
+
+            .card-prices {
+                gap: 10px;
+            }
+
+            .price-block {
+                padding: 10px;
+            }
+
+            .price-value {
+                font-size: 1.05rem;
+            }
+
+            /* Buttons */
+            .btn {
+                padding: 10px 18px;
+                font-size: 0.85rem;
+                min-height: 44px; /* Touch-friendly */
+            }
+
+            .btn-icon {
+                min-width: 44px;
+                min-height: 44px;
+            }
+        }
+
+        /* Mobile Landscape & Below (640px) */
+        @media (max-width: 640px) {
+            /* Header - Stack on mobile landscape */
+            .header-content {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+
+            .logo {
+                justify-content: center;
+            }
+
+            .header-actions {
+                justify-content: space-between;
+                width: 100%;
+            }
+
+            .nav-tabs {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .user-menu {
+                margin-left: auto;
+            }
+
+            /* Dashboard Grid - Still 2 columns */
+            .dashboard-grid {
+                gap: 10px;
+            }
+
+            .stat-card {
+                padding: 14px;
+            }
+
+            .stat-label {
+                font-size: 0.65rem;
+            }
+
+            .stat-value {
+                font-size: 1.25rem;
+            }
+
+            /* Forms */
+            .add-card-form {
+                padding: 16px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .form-main-input {
+                grid-template-columns: 1fr;
+            }
+
+            .form-input, .form-select {
+                padding: 12px; /* Larger touch target */
+                font-size: 0.95rem;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            /* Card Grid - Single column on small mobile */
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .card-item {
+                padding: 14px;
+            }
+
+            .card-header {
+                margin-bottom: 10px;
+            }
+
+            .card-prices {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            /* Action Buttons - Larger touch targets */
+            .card-action-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 16px;
+            }
+
+            /* Cost Basis Row */
+            .cost-basis-row {
+                flex-wrap: wrap;
+            }
+
+            .cost-input {
+                width: 70px;
+            }
+
+            .profit-display {
+                margin-left: 0;
+                flex: 1 0 100%;
+                text-align: center;
+                margin-top: 8px;
+            }
+        }
+
+        /* Mobile Portrait (480px and below) */
+        @media (max-width: 480px) {
+            /* Typography Scale Down */
+            body {
+                font-size: 14px;
+            }
+
+            /* Container */
+            .container {
+                padding: 0 12px;
+            }
+
+            /* Header */
+            .logo-icon {
+                width: 30px;
+                height: 30px;
+                font-size: 14px;
+            }
+
+            .logo-text {
+                font-size: 1.05rem;
+            }
+
+            /* Hide logo text on very small screens */
+            .logo-text {
+                display: none;
+            }
+
+            .logo {
+                justify-content: flex-start;
+            }
+
+            /* Navigation - Compact */
+            .nav-tab {
+                padding: 8px 12px;
+                font-size: 0.75rem;
+            }
+
+            /* Dashboard - Stack vertically */
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .stat-card {
+                padding: 12px;
+            }
+
+            .stat-label {
+                font-size: 0.6rem;
+            }
+
+            .stat-value {
+                font-size: 1.15rem;
+            }
+
+            .stat-change {
+                font-size: 0.7rem;
+                padding: 2px 6px;
+            }
+
+            /* Forms */
+            .add-card-form {
+                padding: 12px;
+            }
+
+            .form-label {
+                font-size: 0.75rem;
+            }
+
+            .form-input, .form-select {
+                padding: 10px;
+                font-size: 0.9rem;
+            }
+
+            /* Cards */
+            .card-item {
+                padding: 12px;
+            }
+
+            .card-title {
+                font-size: 0.8rem;
+            }
+
+            .card-tag {
+                font-size: 0.65rem;
+                padding: 2px 6px;
+            }
+
+            .price-label {
+                font-size: 0.6rem;
+            }
+
+            .price-value {
+                font-size: 0.95rem;
+            }
+
+            .price-range {
+                font-size: 0.68rem;
+            }
+
+            .change-badge {
+                font-size: 0.72rem;
+                padding: 3px 8px;
+            }
+
+            /* Buttons */
+            .btn {
+                padding: 10px 16px;
+                font-size: 0.8rem;
+                min-height: 44px;
+            }
+
+            .btn-sm {
+                padding: 6px 10px;
+                font-size: 0.75rem;
+                min-height: 36px;
+            }
+
+            /* Autocomplete Dropdown */
+            .autocomplete-dropdown {
+                max-height: 250px;
+            }
+
+            .autocomplete-item {
+                padding: 12px 14px;
+            }
+
+            .autocomplete-item-name {
+                font-size: 0.85rem;
+            }
+
+            .autocomplete-item-team {
+                font-size: 0.7rem;
+            }
+
+            /* Modals */
+            .modal-content {
+                width: calc(100% - 24px);
+                max-width: none;
+                margin: 12px;
+                padding: 16px;
+            }
+
+            .modal-header h2 {
+                font-size: 1.1rem;
+            }
+
+            /* Footer */
+            .card-footer {
+                font-size: 0.7rem;
+            }
+
+            /* Guest Banner */
+            .guest-banner {
+                padding: 12px 14px;
+                flex-direction: column;
+                text-align: center;
+                gap: 12px;
+            }
+
+            .guest-banner-text {
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Mobile Landscape Specific (only landscape) */
+        @media (max-width: 768px) and (orientation: landscape) {
+            /* Reduce header height in landscape */
+            header {
+                padding: 8px 0;
+            }
+
+            .logo-icon {
+                width: 28px;
+                height: 28px;
+            }
+
+            /* Compact navigation */
+            .nav-tab {
+                padding: 6px 12px;
+                font-size: 0.75rem;
+            }
+
+            /* Dashboard grid - 3 columns in landscape */
+            .dashboard-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            /* Cards - 2 columns in landscape */
+            .card-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Touch Device Improvements */
+        @media (hover: none) and (pointer: coarse) {
+            /* Increase all tap targets to minimum 44x44px */
+            .btn,
+            .nav-tab,
+            .card-action-btn,
+            button {
+                min-height: 44px;
+                min-width: 44px;
+            }
+
+            /* Remove hover effects on touch devices */
+            .card-item:hover {
+                transform: none;
+            }
+
+            .card-item:active {
+                transform: scale(0.98);
+            }
+
+            .btn:hover {
+                transform: none;
+            }
+
+            .btn:active {
+                transform: scale(0.97);
+            }
+
+            /* Reduce animation complexity on touch devices */
+            * {
+                animation-duration: 0.2s !important;
+                transition-duration: 0.2s !important;
+            }
+
+            /* Disable particles on mobile for performance */
+            .bg-particles {
+                display: none;
+            }
+        }
+
+        /* High DPI Screens (Retina) */
+        @media (-webkit-min-device-pixel-ratio: 2),
+               (min-resolution: 192dpi) {
+            /* Sharper borders on retina */
+            .card-item,
+            .stat-card,
+            .btn {
+                border-width: 0.5px;
+            }
+        }
+
+        /* Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+
+            .bg-particles {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1442,7 +1924,6 @@
                                 </div>
                                 <div class="dropdown-divider"></div>
                                 <button class="dropdown-item" onclick="exportToCSV()">📥 Export CSV</button>
-                                <button class="dropdown-item" onclick="loadMockData()">🎨 Load Demo Data</button>
                                 <div class="dropdown-divider"></div>
                                 <button class="dropdown-item danger" onclick="logout()">Log Out</button>
                             </div>
@@ -1461,7 +1942,6 @@
                     <strong>Create a free account</strong> to save your watchlist and access it from any device.
                 </div>
                 <div style="display:flex;gap:8px;">
-                    <button class="btn btn-secondary btn-sm" onclick="loadMockData()">🎨 Load Demo</button>
                     <button class="btn btn-primary btn-sm" onclick="openAuthModal('register')">Sign Up Free</button>
                 </div>
             </div>
@@ -1813,138 +2293,6 @@
             }
         }
 
-        // ============================================
-        // MOCK DATA FOR TESTING
-        // ============================================
-        function loadMockData() {
-            const mockCards = [
-                {
-                    id: 1,
-                    name: "Patrick Mahomes Signed Kansas City Chiefs SpeedFlex Helmet JSA",
-                    query: "Patrick Mahomes Signed Kansas City Chiefs SpeedFlex Helmet JSA",
-                    category: "speedflex",
-                    filterTags: ["Regular"],
-                    currentPrice: 1249.99,
-                    lastPrice: 1150.00,
-                    change: 8.7,
-                    minPrice: 1100.00,
-                    maxPrice: 1450.00,
-                    totalResults: 9,
-                    costBasis: 975.00,
-                    lastUpdated: new Date(Date.now() - 30 * 60000).toISOString(), // 30 min ago
-                    ebayUrl: "https://www.ebay.com/sch/i.html?_nkw=mahomes+signed+speedflex"
-                },
-                {
-                    id: 2,
-                    name: "Tom Brady Signed New England Patriots Throwback Speed Authentic Helmet Fanatics",
-                    query: "Tom Brady Signed New England Patriots Throwback Speed Authentic Helmet Fanatics",
-                    category: "speed-authentic",
-                    filterTags: ["Throwback"],
-                    currentPrice: 1899.00,
-                    lastPrice: 1750.00,
-                    change: 8.5,
-                    minPrice: 1650.00,
-                    maxPrice: 2100.00,
-                    totalResults: 8,
-                    costBasis: 1500.00,
-                    lastUpdated: new Date(Date.now() - 2 * 60 * 60000).toISOString(), // 2 hours ago
-                    ebayUrl: "https://www.ebay.com/sch/i.html?_nkw=brady+signed+patriots+throwback"
-                },
-                {
-                    id: 3,
-                    name: "Brock Purdy Signed San Francisco 49ers Rave Speed Replica Helmet Beckett",
-                    query: "Brock Purdy Signed San Francisco 49ers Rave Speed Replica Helmet Beckett",
-                    category: "speed-replica",
-                    filterTags: ["Rave"],
-                    currentPrice: 425.00,
-                    lastPrice: 395.00,
-                    change: 7.6,
-                    minPrice: 375.00,
-                    maxPrice: 499.00,
-                    totalResults: 14,
-                    costBasis: 350.00,
-                    lastUpdated: new Date(Date.now() - 1 * 60000).toISOString(), // 1 min ago
-                    ebayUrl: "https://www.ebay.com/sch/i.html?_nkw=purdy+signed+rave"
-                },
-                {
-                    id: 4,
-                    name: "Joe Burrow Signed Cincinnati Bengals Alternate Mini Helmet Beckett",
-                    query: "Joe Burrow Signed Cincinnati Bengals Alternate Mini Helmet Beckett",
-                    category: "mini",
-                    filterTags: ["Alternate"],
-                    currentPrice: 275.00,
-                    lastPrice: 265.00,
-                    change: 3.8,
-                    minPrice: 240.00,
-                    maxPrice: 320.00,
-                    totalResults: 18,
-                    costBasis: 225.00,
-                    lastUpdated: new Date(Date.now() - 10 * 60000).toISOString(), // 10 min ago
-                    ebayUrl: "https://www.ebay.com/sch/i.html?_nkw=burrow+signed+alternate"
-                },
-                {
-                    id: 5,
-                    name: "CJ Stroud Signed Houston Texans Salute to Service Midi SpeedFlex Helmet PSA/DNA",
-                    query: "CJ Stroud Signed Houston Texans Salute to Service Midi SpeedFlex Helmet PSA DNA",
-                    category: "midi-speedflex",
-                    filterTags: ["Salute to Service"],
-                    currentPrice: 799.00,
-                    lastPrice: 725.00,
-                    change: 10.2,
-                    minPrice: 675.00,
-                    maxPrice: 899.00,
-                    totalResults: 6,
-                    costBasis: 625.00,
-                    lastUpdated: new Date(Date.now() - 25 * 60 * 60000).toISOString(), // 25 hours ago
-                    ebayUrl: "https://www.ebay.com/sch/i.html?_nkw=stroud+signed+salute"
-                },
-                {
-                    id: 6,
-                    name: "Justin Jefferson Signed Minnesota Vikings Lunar Eclipse Mini Helmet JSA",
-                    query: "Justin Jefferson Signed Minnesota Vikings Lunar Eclipse Mini Helmet JSA",
-                    category: "mini",
-                    filterTags: ["Lunar Eclipse"],
-                    currentPrice: 349.99,
-                    lastPrice: 325.00,
-                    change: 7.7,
-                    minPrice: 299.00,
-                    maxPrice: 399.00,
-                    totalResults: 22,
-                    costBasis: 275.00,
-                    lastUpdated: new Date(Date.now() - 5 * 60000).toISOString(), // 5 min ago
-                    ebayUrl: "https://www.ebay.com/sch/i.html?_nkw=jefferson+signed+lunar"
-                },
-                {
-                    id: 7,
-                    name: "Josh Allen Signed Buffalo Bills Camo Speed Authentic Helmet Fanatics",
-                    query: "Josh Allen Signed Buffalo Bills Camo Speed Authentic Helmet Fanatics",
-                    category: "speed-authentic",
-                    filterTags: ["Camo"],
-                    currentPrice: 825.00,
-                    lastPrice: 795.00,
-                    change: 3.8,
-                    minPrice: 750.00,
-                    maxPrice: 925.00,
-                    totalResults: 11,
-                    costBasis: 700.00,
-                    lastUpdated: new Date(Date.now() - 15 * 60000).toISOString(), // 15 min ago
-                    ebayUrl: "https://www.ebay.com/sch/i.html?_nkw=allen+signed+camo"
-                }
-            ];
-
-            // Create a mock user
-            currentUser = {
-                name: "Demo User",
-                email: "demo@cardpulse.com"
-            };
-
-            watchlist = mockCards;
-            localStorage.setItem('cardpulse_watchlist', JSON.stringify(watchlist));
-            renderWatchlist();
-            updateDashboard();
-            updateAuthUI();
-            showToast('Mock data loaded! Explore the animations', 'success');
-        }
 
         // ============================================
         // INITIALIZATION
@@ -1953,15 +2301,10 @@
             createParticles();
             initTabs();
             initAutocomplete();
-            initGradeCalculator();
 
             // Check if user is logged in
             if (authToken) {
                 await checkAuth();
-            } else {
-                // Load mock data for demo purposes
-                // Comment out this line if you want to test without mock data
-                loadMockData();
             }
 
             renderWatchlist();
@@ -2329,7 +2672,6 @@
                                 </div>
                             </div>
                             <div class="card-actions">
-                                <button class="card-action-btn" onclick="sendToGradeCalc(${i})" title="Grade or Nah?">🎯</button>
                                 <button class="card-action-btn" onclick="refreshCard(${i})" title="${canRefresh ? 'Refresh' : 'Wait 5 minutes'}" ${!canRefresh ? 'disabled' : ''}>↻</button>
                                 <button class="card-action-btn delete" onclick="deleteCard(${i})" title="Delete">×</button>
                             </div>
@@ -2576,81 +2918,6 @@
                 console.log('Fetch failed:', e);
                 showToast('Failed to fetch price data', 'error');
             }
-        }
-
-        // ============================================
-        // GRADE CALCULATOR
-        // ============================================
-        let selectedGrade = 10, selectedCost = 50;
-
-        function initGradeCalculator() {
-            document.querySelectorAll('#gradeSelect .segment-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('#gradeSelect .segment-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    selectedGrade = parseInt(btn.dataset.grade);
-                });
-            });
-            document.querySelectorAll('#serviceSelect .segment-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('#serviceSelect .segment-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    selectedCost = parseInt(btn.dataset.cost);
-                });
-            });
-        }
-
-        function calculateGrade() {
-            const rawValue = parseFloat(document.getElementById('gradeRawValue').value);
-            if (!rawValue || rawValue <= 0) { showToast('Enter a valid value', 'error'); return; }
-
-            const mult = { 10: 3.5, 9: 1.6, 8: 1.15 }[selectedGrade];
-            const gradedValue = rawValue * mult;
-            const totalCost = rawValue + selectedCost;
-            const netProfit = gradedValue - totalCost;
-            const roi = (netProfit / totalCost) * 100;
-
-            document.getElementById('gradeResult').style.display = 'block';
-            const verdict = document.getElementById('gradeVerdict');
-
-            if (netProfit > 30 && roi > 30) {
-                verdict.className = 'result-verdict grade';
-                document.getElementById('verdictIcon').textContent = '✅';
-                document.getElementById('verdictText').textContent = 'SEND IT!';
-                document.getElementById('verdictNote').textContent = `Strong ROI of ${roi.toFixed(0)}%.`;
-            } else if (netProfit > 10 && roi > 15) {
-                verdict.className = 'result-verdict maybe';
-                document.getElementById('verdictIcon').textContent = '🤔';
-                document.getElementById('verdictText').textContent = 'MAYBE';
-                document.getElementById('verdictNote').textContent = `Marginal profit of $${netProfit.toFixed(2)}.`;
-            } else {
-                verdict.className = 'result-verdict skip';
-                document.getElementById('verdictIcon').textContent = '❌';
-                document.getElementById('verdictText').textContent = 'SKIP IT';
-                document.getElementById('verdictNote').textContent = netProfit < 0 ? `You'd lose $${Math.abs(netProfit).toFixed(2)}.` : 'Not worth the wait.';
-            }
-
-            document.getElementById('gradedValue').textContent = '$' + gradedValue.toFixed(2);
-            document.getElementById('totalGradeCost').textContent = '$' + totalCost.toFixed(2);
-            document.getElementById('netProfit').textContent = (netProfit >= 0 ? '+$' : '-$') + Math.abs(netProfit).toFixed(2);
-            document.getElementById('netProfit').style.color = netProfit >= 0 ? 'var(--success)' : 'var(--danger)';
-        }
-
-        function sendToGradeCalc(index) {
-            const card = watchlist[index];
-            if (!card || !card.currentPrice) {
-                showToast('No price data yet', 'error');
-                return;
-            }
-            // Switch to Tools tab
-            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-            document.querySelector('[data-tab="tools"]').classList.add('active');
-            document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
-            document.getElementById('toolsSection').classList.add('active');
-            // Fill in the raw value
-            document.getElementById('gradeRawValue').value = card.currentPrice.toFixed(2);
-            // Auto-calculate
-            calculateGrade();
         }
 
         // ============================================

@@ -10,6 +10,8 @@
 
       gtag('config', 'G-1M3WXXM42Y');
     </script>
+    <!-- Google reCAPTCHA -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HelmetPulse — Smart Helmet Value Tracking</title>
@@ -2077,6 +2079,9 @@
                     <div class="auth-forgot" id="authForgot" style="display:none;">
                         <a onclick="openResetModal()">Forgot password?</a>
                     </div>
+                    <div id="recaptchaContainer" style="margin-bottom: 16px;">
+                        <div class="g-recaptcha" data-sitekey="6LfPfCgsAAAAAIaPTSV1Y2oSWgmUxtjTE2vFpVy1" data-theme="dark" id="recaptchaWidget"></div>
+                    </div>
                     <button type="submit" class="btn btn-primary" style="width:100%;" id="authSubmitBtn">Sign Up</button>
                 </form>
                 <div class="auth-switch" id="authSwitch">
@@ -2425,11 +2430,14 @@
             const switchText = document.getElementById('authSwitch');
             const forgotLink = document.getElementById('authForgot');
 
+            const recaptchaContainer = document.getElementById('recaptchaContainer');
+
             if (mode === 'login') {
                 title.textContent = 'Welcome Back';
                 subtitle.textContent = 'Log in to your account';
                 nameGroup.style.display = 'none';
                 forgotLink.style.display = 'block';
+                recaptchaContainer.style.display = 'none';
                 submitBtn.textContent = 'Log In';
                 switchText.innerHTML = 'Don\'t have an account? <a onclick="switchAuthMode(\'register\')">Sign up</a>';
             } else {
@@ -2437,8 +2445,13 @@
                 subtitle.textContent = 'Create your free account';
                 nameGroup.style.display = 'block';
                 forgotLink.style.display = 'none';
+                recaptchaContainer.style.display = 'block';
                 submitBtn.textContent = 'Sign Up';
                 switchText.innerHTML = 'Already have an account? <a onclick="switchAuthMode(\'login\')">Log in</a>';
+                // Reset reCAPTCHA when switching to register mode
+                if (typeof grecaptcha !== 'undefined') {
+                    grecaptcha.reset();
+                }
             }
 
             document.getElementById('authError').classList.remove('show');
@@ -2463,12 +2476,23 @@
             const errorEl = document.getElementById('authError');
             const submitBtn = document.getElementById('authSubmitBtn');
 
+            // Get reCAPTCHA token for registration
+            let captchaToken = null;
+            if (authMode === 'register') {
+                captchaToken = grecaptcha.getResponse();
+                if (!captchaToken) {
+                    errorEl.textContent = 'Please complete the CAPTCHA verification';
+                    errorEl.classList.add('show');
+                    return;
+                }
+            }
+
             submitBtn.disabled = true;
             submitBtn.textContent = authMode === 'login' ? 'Logging in...' : 'Creating account...';
 
             try {
                 const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
-                const body = authMode === 'login' ? { email, password } : { email, password, name };
+                const body = authMode === 'login' ? { email, password } : { email, password, name, captchaToken };
 
                 const res = await fetch(`${API_URL}${endpoint}`, {
                     method: 'POST',
@@ -2508,6 +2532,10 @@
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = authMode === 'login' ? 'Log In' : 'Sign Up';
+                // Reset reCAPTCHA after submission attempt
+                if (typeof grecaptcha !== 'undefined') {
+                    grecaptcha.reset();
+                }
             }
         });
 

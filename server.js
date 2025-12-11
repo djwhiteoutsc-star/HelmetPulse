@@ -44,6 +44,9 @@ const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_PASS = process.env.EMAIL_PASS;
 const EMAIL_FROM = process.env.EMAIL_FROM || 'HelmetPulse <noreply@helmetpulse.com>';
 
+// reCAPTCHA Configuration
+const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
+
 // Initialize Anthropic client
 const anthropic = ANTHROPIC_API_KEY ? new Anthropic({ apiKey: ANTHROPIC_API_KEY }) : null;
 
@@ -355,13 +358,38 @@ async function logAccess(userId, eventType, req, tokenRecordId = null, notes = '
 }
 
 // ============================================
+// CAPTCHA VERIFICATION
+// ============================================
+
+async function verifyCaptcha(token) {
+    if (!RECAPTCHA_SECRET_KEY) {
+        console.warn('⚠️ RECAPTCHA_SECRET_KEY not configured - skipping captcha verification');
+        return true; // Allow registration if captcha not configured
+    }
+
+    try {
+        const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `secret=${RECAPTCHA_SECRET_KEY}&response=${token}`
+        });
+
+        const data = await response.json();
+        return data.success === true;
+    } catch (error) {
+        console.error('Captcha verification error:', error);
+        return false;
+    }
+}
+
+// ============================================
 // AUTH ENDPOINTS
 // ============================================
 
 // Register
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { email, password, name } = req.body;
+        const { email, password, name, captchaToken } = req.body;
 
         // Validation
         if (!email || !email.includes('@')) {
@@ -369,6 +397,15 @@ app.post('/api/auth/register', async (req, res) => {
         }
         if (!password || password.length < 6) {
             return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        }
+
+        // Verify CAPTCHA
+        if (!captchaToken) {
+            return res.status(400).json({ error: 'Please complete the CAPTCHA verification' });
+        }
+        const captchaValid = await verifyCaptcha(captchaToken);
+        if (!captchaValid) {
+            return res.status(400).json({ error: 'CAPTCHA verification failed. Please try again.' });
         }
 
         // Check if user exists

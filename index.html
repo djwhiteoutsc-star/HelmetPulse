@@ -1989,6 +1989,10 @@
 
             <!-- Watchlist Tab -->
             <section class="page-section active" id="watchlistSection">
+                <!-- Disclaimer -->
+                <div style="text-align: left; color: var(--text-muted); font-size: 0.7rem; margin-bottom: 16px;">
+                    Prices based off retail values
+                </div>
                 <!-- Dashboard -->
                 <div class="dashboard-grid">
                     <div class="stat-card">
@@ -2007,7 +2011,7 @@
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Helmets Tracked</div>
-                        <div class="stat-value" id="cardCount">0/10</div>
+                        <div class="stat-value" id="cardCount">0/5</div>
                     </div>
                 </div>
 
@@ -2146,7 +2150,7 @@
         let authToken = localStorage.getItem('cardpulse_token');
         let authMode = 'register';
 
-        const MAX_CARDS = 10;
+        const MAX_CARDS = 5;
         const API_URL = ''; // Empty for relative URLs - works on any host
         const MIN_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 

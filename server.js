@@ -962,19 +962,30 @@ app.get('/api/helmets/:id/prices', async (req, res) => {
             });
         }
 
-        // Use the most recent price
-        const latestPrice = prices[0];
+        // Calculate median price across all retailers
+        const allPrices = prices.map(p => p.median_price).filter(p => p !== null && p > 0);
+        let medianPrice = null;
 
-        // Calculate average if multiple sources
-        const avgMedian = prices.reduce((sum, p) => sum + (p.median_price || 0), 0) / prices.length;
+        if (allPrices.length > 0) {
+            allPrices.sort((a, b) => a - b);
+            const mid = Math.floor(allPrices.length / 2);
+            medianPrice = allPrices.length % 2 === 0
+                ? (allPrices[mid - 1] + allPrices[mid]) / 2
+                : allPrices[mid];
+        }
+
+        // Get min and max across all sources
+        const allMinPrices = prices.map(p => p.min_price).filter(p => p !== null && p > 0);
+        const allMaxPrices = prices.map(p => p.max_price).filter(p => p !== null && p > 0);
 
         res.json({
             helmet,
-            medianPrice: latestPrice.median_price || avgMedian,
-            minPrice: latestPrice.min_price || Math.min(...prices.map(p => p.min_price || Infinity)),
-            maxPrice: latestPrice.max_price || Math.max(...prices.map(p => p.max_price || 0)),
+            medianPrice: medianPrice,
+            minPrice: allMinPrices.length > 0 ? Math.min(...allMinPrices) : null,
+            maxPrice: allMaxPrices.length > 0 ? Math.max(...allMaxPrices) : null,
             totalResults: prices.reduce((sum, p) => sum + (p.total_results || 0), 0),
-            source: latestPrice.source || 'database',
+            source: prices.length > 1 ? `${prices.length} retailers` : (prices[0]?.source || 'database'),
+            priceCount: allPrices.length,
             priceHistory: prices
         });
     } catch (error) {

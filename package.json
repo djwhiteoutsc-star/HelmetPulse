@@ -10,6 +10,7 @@
     "import:radtke": "node scripts/import-radtke-all.js",
     "import:rsa": "node scripts/import-rsa-all.js",
     "import:fanatics": "node scripts/import-fanatics-inventory.js",
+    "import:signaturesports": "node scripts/import-signaturesports.js",
     "import:all": "node scripts/import.js all",
     "import:status": "node scripts/import.js status",
     "discover": "node scripts/auto-discover-helmets.js",

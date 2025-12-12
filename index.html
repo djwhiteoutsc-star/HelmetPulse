@@ -1621,6 +1621,19 @@
                 justify-content: center;
             }
 
+            /* Mobile Layout Reorder - Search on top */
+            #watchlistSection {
+                display: flex;
+                flex-direction: column;
+            }
+
+            #watchlistSection .price-disclaimer { order: 1; }
+            #watchlistSection .add-card-form { order: 2; margin-bottom: 16px; }
+            #watchlistSection .dashboard-grid { order: 3; }
+            #watchlistSection .api-warning { order: 4; }
+            #watchlistSection .section-header { order: 5; }
+            #watchlistSection .card-grid { order: 6; }
+
             /* Card Grid - Single column on small mobile */
             .card-grid {
                 grid-template-columns: 1fr;
@@ -1990,7 +2003,7 @@
             <!-- Watchlist Tab -->
             <section class="page-section active" id="watchlistSection">
                 <!-- Disclaimer -->
-                <div style="text-align: left; color: var(--text-muted); font-size: 0.7rem; margin-bottom: 16px;">
+                <div class="price-disclaimer" style="text-align: left; color: var(--text-muted); font-size: 0.7rem; margin-bottom: 16px;">
                     Prices based off retail values
                 </div>
                 <!-- Dashboard -->

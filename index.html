@@ -2247,7 +2247,10 @@
                             <path d="m21 21-4.3-4.3"></path>
                         </svg>
                     </div>
-                    <input type="text" id="mobileCardName" placeholder="Search for a helmet (e.g., Riddell SpeedFlex)..." autocomplete="off">
+                    <div class="autocomplete-wrapper" style="flex: 1; min-width: 0;">
+                        <input type="text" id="mobileCardName" placeholder="Search for a helmet..." autocomplete="off">
+                        <div class="autocomplete-dropdown" id="mobileAutocompleteDropdown"></div>
+                    </div>
                     <button type="submit" class="add-btn">+ Add</button>
                 </form>
 
@@ -2437,15 +2440,47 @@
         let selectedAutocompleteIndex = -1;
         let currentSuggestions = [];
         let selectedHelmet = null; // Stores the selected helmet from autocomplete
+        let activeInput = null; // Track which input is currently active
+        let activeDropdown = null; // Track which dropdown is currently active
 
         function initAutocomplete() {
-            const input = document.getElementById('cardName');
-            const dropdown = document.getElementById('autocompleteDropdown');
+            // Setup for both desktop and mobile inputs
+            setupAutocompleteInput('cardName', 'autocompleteDropdown');
+            setupAutocompleteInput('mobileCardName', 'mobileAutocompleteDropdown');
+
+            // Hide dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.autocomplete-wrapper')) {
+                    hideAutocomplete();
+                }
+            });
+
+            // Hide dropdown on form submit
+            const form = document.getElementById('addCardForm');
+            if (form) {
+                form.addEventListener('submit', () => {
+                    hideAutocomplete();
+                });
+            }
+
+            const mobileForm = document.getElementById('mobileSearchForm');
+            if (mobileForm) {
+                mobileForm.addEventListener('submit', () => {
+                    hideAutocomplete();
+                });
+            }
+        }
+
+        function setupAutocompleteInput(inputId, dropdownId) {
+            const input = document.getElementById(inputId);
+            const dropdown = document.getElementById(dropdownId);
 
             if (!input || !dropdown) return;
 
             // Handle input changes
             input.addEventListener('input', (e) => {
+                activeInput = input;
+                activeDropdown = dropdown;
                 const query = e.target.value.trim();
 
                 // Clear previous timeout
@@ -2465,7 +2500,7 @@
 
                 // Debounce the API call
                 autocompleteTimeout = setTimeout(() => {
-                    fetchSuggestions(query);
+                    fetchSuggestions(query, dropdown);
                 }, 300);
             });
 
@@ -2491,24 +2526,15 @@
                 }
             });
 
-            // Hide dropdown when clicking outside
-            document.addEventListener('click', (e) => {
-                if (!e.target.closest('.autocomplete-wrapper')) {
-                    hideAutocomplete();
-                }
+            // Set active on focus
+            input.addEventListener('focus', () => {
+                activeInput = input;
+                activeDropdown = dropdown;
             });
-
-            // Hide dropdown on form submit
-            const form = document.getElementById('addCardForm');
-            if (form) {
-                form.addEventListener('submit', () => {
-                    hideAutocomplete();
-                });
-            }
         }
 
-        async function fetchSuggestions(query) {
-            const dropdown = document.getElementById('autocompleteDropdown');
+        async function fetchSuggestions(query, dropdown) {
+            if (!dropdown) dropdown = activeDropdown;
 
             try {
                 const response = await fetch(`${API_URL}/api/helmets/suggestions?q=${encodeURIComponent(query)}`);
@@ -2516,7 +2542,7 @@
 
                 if (data.suggestions && data.suggestions.length > 0) {
                     currentSuggestions = data.suggestions;
-                    renderSuggestions(data.suggestions);
+                    renderSuggestions(data.suggestions, dropdown);
                 } else {
                     currentSuggestions = [];
                     dropdown.innerHTML = '<div class="autocomplete-no-results">No matching helmets found. You can still add a custom search.</div>';
@@ -2527,8 +2553,8 @@
             }
         }
 
-        function renderSuggestions(suggestions) {
-            const dropdown = document.getElementById('autocompleteDropdown');
+        function renderSuggestions(suggestions, dropdown) {
+            if (!dropdown) dropdown = activeDropdown;
             selectedAutocompleteIndex = -1;
 
             dropdown.innerHTML = suggestions.map((s, index) => {
@@ -2560,8 +2586,7 @@
         }
 
         function selectSuggestion(suggestion) {
-            const input = document.getElementById('cardName');
-            if (input && suggestion) {
+            if (activeInput && suggestion) {
                 // Build a clean display name from structured data
                 const parts = [
                     suggestion.player || 'Unknown',
@@ -2569,7 +2594,7 @@
                     suggestion.helmetType ? formatHelmetType(suggestion.helmetType) : '',
                     suggestion.designType ? formatDesignType(suggestion.designType) : ''
                 ].filter(Boolean);
-                input.value = parts.join(' - ');
+                activeInput.value = parts.join(' - ');
                 selectedHelmet = suggestion; // Store the full helmet object with ID
             }
             hideAutocomplete();
@@ -2587,10 +2612,17 @@
         }
 
         function hideAutocomplete() {
-            const dropdown = document.getElementById('autocompleteDropdown');
-            if (dropdown) {
-                dropdown.classList.remove('show');
-                dropdown.innerHTML = '';
+            // Hide both dropdowns
+            const desktopDropdown = document.getElementById('autocompleteDropdown');
+            const mobileDropdown = document.getElementById('mobileAutocompleteDropdown');
+
+            if (desktopDropdown) {
+                desktopDropdown.classList.remove('show');
+                desktopDropdown.innerHTML = '';
+            }
+            if (mobileDropdown) {
+                mobileDropdown.classList.remove('show');
+                mobileDropdown.innerHTML = '';
             }
             selectedAutocompleteIndex = -1;
             currentSuggestions = [];

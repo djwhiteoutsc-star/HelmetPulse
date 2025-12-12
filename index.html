@@ -1439,6 +1439,239 @@
         .guest-banner-text strong { color: var(--accent-primary); }
 
         /* ============================================
+           MOBILE-FIRST REDESIGN - "Digital Vault"
+           ============================================ */
+
+        /* Mobile Header */
+        .mobile-header {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 0;
+            margin-bottom: 16px;
+        }
+
+        .mobile-header .page-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .mobile-header .profile-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .mobile-header .profile-icon:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-primary);
+        }
+
+        .mobile-header .profile-icon svg {
+            width: 20px;
+            height: 20px;
+            color: var(--text-secondary);
+        }
+
+        .mobile-header .profile-icon .notification-dot {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 8px;
+            height: 8px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            border: 2px solid var(--bg-dark);
+        }
+
+        /* Unified Search Bar */
+        .search-bar-unified {
+            display: none;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 50px;
+            padding: 8px 8px 8px 16px;
+            margin-bottom: 12px;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s;
+        }
+
+        .search-bar-unified:focus-within {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.15);
+        }
+
+        .search-bar-unified .search-icon {
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .search-bar-unified .search-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .search-bar-unified input {
+            flex: 1;
+            min-width: 0;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .search-bar-unified input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-bar-unified .add-btn {
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .search-bar-unified .add-btn:hover {
+            background: var(--accent-dark);
+            transform: scale(1.02);
+        }
+
+        /* Portfolio Overview Card (Glass Morphism) */
+        .portfolio-overview {
+            display: none;
+            background: linear-gradient(145deg, rgba(24, 24, 27, 0.9) 0%, rgba(15, 15, 18, 0.95) 100%);
+            border: 1px solid rgba(63, 63, 70, 0.5);
+            border-radius: var(--radius-xl);
+            padding: 20px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .portfolio-overview::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(167, 139, 250, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .portfolio-overview .overview-header {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .portfolio-overview .value-container {
+            background: rgba(9, 9, 11, 0.6);
+            border: 1px solid rgba(63, 63, 70, 0.3);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .portfolio-overview .value-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .portfolio-overview .value-amount {
+            font-family: 'Space Mono', monospace;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .portfolio-overview .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            position: relative;
+        }
+
+        .portfolio-overview .stats-row span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .portfolio-overview .stats-row .stat-value {
+            font-family: 'Space Mono', monospace;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            background: none;
+            -webkit-text-fill-color: var(--text-primary);
+        }
+
+        /* Improved Empty State */
+        .empty-state-new {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px 24px;
+            text-align: center;
+        }
+
+        .empty-state-new .helmet-illustration {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 24px;
+            opacity: 0.3;
+        }
+
+        .empty-state-new .helmet-illustration svg {
+            width: 100%;
+            height: 100%;
+            color: var(--text-muted);
+        }
+
+        .empty-state-new h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .empty-state-new p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            max-width: 280px;
+            line-height: 1.5;
+        }
+
+        /* ============================================
            MOBILE OPTIMIZATIONS
            ============================================ */
 
@@ -1555,81 +1788,73 @@
 
         /* Mobile Landscape & Below (640px) */
         @media (max-width: 640px) {
-            /* Header - Stack on mobile landscape */
-            .header-content {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 10px;
+            /* === NEW MOBILE REDESIGN === */
+
+            /* Prevent horizontal scroll */
+            body, html {
+                overflow-x: hidden;
             }
 
-            .logo {
-                justify-content: center;
+            .container {
+                max-width: 100%;
+                overflow-x: hidden;
             }
 
-            .header-actions {
+            /* Hide old header, show new mobile header */
+            header { display: none; }
+            .mobile-header { display: flex; }
+
+            /* Hide guest banner */
+            .guest-banner { display: none; }
+
+            /* Hide old form, show unified search bar */
+            .add-card-form { display: none; }
+            .search-bar-unified { display: flex; }
+
+            /* Hide old dashboard grid, show portfolio overview */
+            .dashboard-grid { display: none; }
+            .portfolio-overview { display: block; }
+
+            /* Mobile stats-row tighter spacing */
+            .portfolio-overview .stats-row {
+                gap: 8px;
+                font-size: 0.8rem;
+                flex-wrap: wrap;
                 justify-content: space-between;
-                width: 100%;
             }
 
-            .nav-tabs {
+            .portfolio-overview .stats-row .stat-value {
+                font-size: 0.8rem;
+            }
+
+            .portfolio-overview .value-amount {
+                font-size: 2rem;
+            }
+
+            /* Hide old disclaimer */
+            .price-disclaimer { display: none; }
+
+            /* Adjust section header for mobile */
+            .section-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .section-header .section-actions {
                 width: 100%;
                 justify-content: flex-start;
             }
 
-            .user-menu {
-                margin-left: auto;
-            }
-
-            /* Dashboard Grid - Still 2 columns */
-            .dashboard-grid {
-                gap: 10px;
-            }
-
-            .stat-card {
-                padding: 14px;
-            }
-
-            .stat-label {
-                font-size: 0.65rem;
-            }
-
-            .stat-value {
-                font-size: 1.25rem;
-            }
-
-            /* Forms */
-            .add-card-form {
-                padding: 16px;
-            }
-
-            .form-row {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
-
-            .form-main-input {
-                grid-template-columns: 1fr;
-            }
-
-            .form-input, .form-select {
-                padding: 12px; /* Larger touch target */
-                font-size: 0.95rem;
-            }
-
-            .btn {
-                width: 100%;
-                justify-content: center;
-            }
-
-            /* Mobile Layout Reorder - Search on top */
+            /* Mobile Layout Reorder */
             #watchlistSection {
                 display: flex;
                 flex-direction: column;
             }
 
-            #watchlistSection .price-disclaimer { order: 1; }
-            #watchlistSection .add-card-form { order: 2; margin-bottom: 16px; }
-            #watchlistSection .dashboard-grid { order: 3; }
+            #watchlistSection .search-bar-unified { order: 1; }
+            #watchlistSection .mobile-price-note { order: 2; display: block !important; }
+            #watchlistSection .portfolio-overview { order: 3; }
             #watchlistSection .api-warning { order: 4; }
             #watchlistSection .section-header { order: 5; }
             #watchlistSection .card-grid { order: 6; }
@@ -1829,16 +2054,9 @@
                 font-size: 0.7rem;
             }
 
-            /* Guest Banner */
+            /* Guest Banner - Hidden on mobile */
             .guest-banner {
-                padding: 12px 14px;
-                flex-direction: column;
-                text-align: center;
-                gap: 12px;
-            }
-
-            .guest-banner-text {
-                font-size: 0.85rem;
+                display: none !important;
             }
         }
 
@@ -1990,6 +2208,20 @@
 
     <main>
         <div class="container">
+            <!-- Mobile Header (shown on mobile only) -->
+            <div class="mobile-header" id="mobileHeader">
+                <div class="logo">
+                    <img src=".\images\logo.png" alt="HelmetPulse Logo" style="height: 50px; width: auto;">
+                </div>
+                <div class="profile-icon" onclick="currentUser ? toggleDropdown() : openAuthModal('login')" id="mobileProfileIcon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span class="notification-dot" id="mobileNotificationDot"></span>
+                </div>
+            </div>
+
             <!-- Guest Banner -->
             <div class="guest-banner" id="guestBanner">
                 <div class="guest-banner-text">
@@ -2002,11 +2234,43 @@
 
             <!-- Watchlist Tab -->
             <section class="page-section active" id="watchlistSection">
-                <!-- Disclaimer -->
+                <!-- Disclaimer (Desktop) -->
                 <div class="price-disclaimer" style="text-align: left; color: var(--text-muted); font-size: 0.7rem; margin-bottom: 16px;">
                     Prices based off retail values
                 </div>
-                <!-- Dashboard -->
+
+                <!-- Unified Search Bar (Mobile) -->
+                <form class="search-bar-unified" id="mobileSearchForm">
+                    <div class="search-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.3-4.3"></path>
+                        </svg>
+                    </div>
+                    <input type="text" id="mobileCardName" placeholder="Search for a helmet (e.g., Riddell SpeedFlex)..." autocomplete="off">
+                    <button type="submit" class="add-btn">+ Add</button>
+                </form>
+
+                <!-- Price Note (Mobile) -->
+                <div class="mobile-price-note" style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 16px; display: none;">
+                    Prices updated real-time based on retail value.
+                </div>
+
+                <!-- Portfolio Overview (Mobile) -->
+                <div class="portfolio-overview">
+                    <div class="overview-header">Portfolio Overview</div>
+                    <div class="value-container">
+                        <div class="value-label">Total Portfolio Value</div>
+                        <div class="value-amount" id="mobilePortfolioValue">$0.00</div>
+                    </div>
+                    <div class="stats-row">
+                        <span>Cost: <span class="stat-value" id="mobileTotalCost">$0.00</span></span>
+                        <span>Profit: <span class="stat-value" id="mobileTotalProfit">$0.00</span></span>
+                        <span>Tracked: <span class="stat-value" id="mobileCardCount">0/5</span></span>
+                    </div>
+                </div>
+
+                <!-- Dashboard (Desktop) -->
                 <div class="dashboard-grid">
                     <div class="stat-card">
                         <div class="stat-label">Portfolio Value</div>
@@ -2692,11 +2956,13 @@
             const guestActions = document.getElementById('guestActions');
             const userActions = document.getElementById('userActions');
             const guestBanner = document.getElementById('guestBanner');
+            const mobileNotificationDot = document.getElementById('mobileNotificationDot');
 
             if (currentUser) {
                 guestActions.style.display = 'none';
                 userActions.style.display = 'flex';
                 guestBanner.style.display = 'none';
+                if (mobileNotificationDot) mobileNotificationDot.style.display = 'none';
 
                 document.getElementById('userAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
                 document.getElementById('userName').textContent = currentUser.name;
@@ -2705,6 +2971,7 @@
                 guestActions.style.display = 'flex';
                 userActions.style.display = 'none';
                 guestBanner.style.display = 'flex';
+                if (mobileNotificationDot) mobileNotificationDot.style.display = 'block';
             }
         }
 
@@ -2847,6 +3114,11 @@
                 document.getElementById('totalProfit').textContent = '$0.00';
                 document.getElementById('cardCount').textContent = '0/' + MAX_CARDS;
                 document.getElementById('profitChange').style.display = 'none';
+                // Mobile stats
+                document.getElementById('mobilePortfolioValue').textContent = '$0.00';
+                document.getElementById('mobileTotalCost').textContent = '$0.00';
+                document.getElementById('mobileTotalProfit').textContent = '$0.00';
+                document.getElementById('mobileCardCount').textContent = '0/' + MAX_CARDS;
                 return;
             }
 
@@ -2859,11 +3131,18 @@
             const profit = totalValue - totalCost;
             const profitPercent = totalCost > 0 ? (profit / totalCost) * 100 : 0;
 
+            // Desktop stats
             document.getElementById('totalValue').textContent = '$' + totalValue.toFixed(2);
             document.getElementById('totalCost').textContent = '$' + totalCost.toFixed(2);
             document.getElementById('totalProfit').textContent = (profit >= 0 ? '+$' : '-$') + Math.abs(profit).toFixed(2);
             document.getElementById('totalProfit').style.color = profit >= 0 ? 'var(--success)' : 'var(--danger)';
             document.getElementById('cardCount').textContent = watchlist.length + '/' + MAX_CARDS;
+
+            // Mobile stats
+            document.getElementById('mobilePortfolioValue').textContent = '$' + totalValue.toFixed(2);
+            document.getElementById('mobileTotalCost').textContent = '$' + totalCost.toFixed(2);
+            document.getElementById('mobileTotalProfit').textContent = (profit >= 0 ? '+$' : '-$') + Math.abs(profit).toFixed(2);
+            document.getElementById('mobileCardCount').textContent = watchlist.length + '/' + MAX_CARDS;
 
             const profitChangeEl = document.getElementById('profitChange');
             if (totalCost > 0) {
@@ -2999,6 +3278,53 @@
             renderWatchlist();
             document.getElementById('addCardForm').reset();
             selectedHelmet = null; // Clear selected helmet
+
+            showToast('Helmet added! Fetching prices...', 'success');
+            fetchPriceData(watchlist.length - 1);
+        });
+
+        // Mobile search form handler
+        document.getElementById('mobileSearchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Require login to add cards
+            if (!currentUser) {
+                openAuthModal('register');
+                return;
+            }
+
+            if (watchlist.length >= MAX_CARDS) {
+                showToast('Watchlist full! Max ' + MAX_CARDS + ' cards.', 'error');
+                return;
+            }
+
+            const name = document.getElementById('mobileCardName').value.trim();
+            if (!name) return;
+
+            const card = {
+                id: Date.now(),
+                name,
+                query: selectedHelmet ? selectedHelmet.name : name,
+                category: 'helmet',
+                filterTags: [],
+                currentPrice: null,
+                lastPrice: null,
+                change: null,
+                costBasis: null,
+                lastUpdated: null,
+                helmetId: selectedHelmet ? selectedHelmet.id : null,
+                helmetIds: selectedHelmet && selectedHelmet.ids ? selectedHelmet.ids : null,
+                player: selectedHelmet ? selectedHelmet.player : null,
+                team: selectedHelmet ? selectedHelmet.team : null,
+                helmetType: selectedHelmet ? selectedHelmet.helmetType : null,
+                designType: selectedHelmet ? selectedHelmet.designType : null
+            };
+
+            watchlist.push(card);
+            saveWatchlist();
+            renderWatchlist();
+            document.getElementById('mobileCardName').value = '';
+            selectedHelmet = null;
 
             showToast('Helmet added! Fetching prices...', 'success');
             fetchPriceData(watchlist.length - 1);

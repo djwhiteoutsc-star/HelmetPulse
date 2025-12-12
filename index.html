@@ -1458,8 +1458,10 @@
         }
 
         .mobile-header .profile-icon {
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            min-height: 44px;
             border-radius: 50%;
             background: var(--bg-elevated);
             border: 1px solid var(--border);
@@ -1469,6 +1471,9 @@
             cursor: pointer;
             transition: all 0.2s;
             position: relative;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
 
         .mobile-header .profile-icon:hover {
@@ -2213,13 +2218,13 @@
                 <div class="logo">
                     <img src=".\images\logo.png" alt="HelmetPulse Logo" style="height: 50px; width: auto;">
                 </div>
-                <div class="profile-icon" onclick="currentUser ? toggleDropdown() : openAuthModal('login')" id="mobileProfileIcon">
+                <button type="button" class="profile-icon" id="mobileProfileIcon" aria-label="Account">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                         <circle cx="12" cy="7" r="4"></circle>
                     </svg>
                     <span class="notification-dot" id="mobileNotificationDot"></span>
-                </div>
+                </button>
             </div>
 
             <!-- Guest Banner -->
@@ -2702,6 +2707,20 @@
             createParticles();
             initTabs();
             initAutocomplete();
+
+            // Mobile profile icon click handler
+            const mobileProfileIcon = document.getElementById('mobileProfileIcon');
+            if (mobileProfileIcon) {
+                mobileProfileIcon.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (currentUser) {
+                        toggleDropdown();
+                    } else {
+                        openAuthModal('login');
+                    }
+                });
+            }
 
             // Check if user is logged in
             if (authToken) {

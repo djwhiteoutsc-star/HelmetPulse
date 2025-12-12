@@ -382,19 +382,29 @@
         /* Modal */
         .modal-overlay {
             position: fixed;
-            inset: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background: rgba(0, 0, 0, 0.75);
+            -webkit-backdrop-filter: blur(4px);
             backdrop-filter: blur(4px);
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 300;
+            z-index: 9999;
             opacity: 0;
             visibility: hidden;
-            transition: all 0.25s;
+            -webkit-transition: opacity 0.25s, visibility 0.25s;
+            transition: opacity 0.25s, visibility 0.25s;
+            -webkit-overflow-scrolling: touch;
         }
 
-        .modal-overlay.open { opacity: 1; visibility: visible; }
+        .modal-overlay.open {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
 
         .modal {
             background: var(--bg-card);
@@ -2711,14 +2721,26 @@
             // Mobile profile icon click handler
             const mobileProfileIcon = document.getElementById('mobileProfileIcon');
             if (mobileProfileIcon) {
-                mobileProfileIcon.addEventListener('click', (e) => {
+                let profileIconTapped = false;
+
+                function handleProfileIconTap() {
+                    if (profileIconTapped) return;
+                    profileIconTapped = true;
+
+                    setTimeout(function() {
+                        if (currentUser) {
+                            toggleDropdown();
+                        } else {
+                            openAuthModal('login');
+                        }
+                        // Reset after a short delay
+                        setTimeout(function() { profileIconTapped = false; }, 300);
+                    }, 0);
+                }
+
+                mobileProfileIcon.addEventListener('click', function(e) {
                     e.preventDefault();
-                    e.stopPropagation();
-                    if (currentUser) {
-                        toggleDropdown();
-                    } else {
-                        openAuthModal('login');
-                    }
+                    handleProfileIconTap();
                 });
             }
 

@@ -1508,6 +1508,89 @@
             border: 2px solid var(--bg-dark);
         }
 
+        /* Mobile User Area */
+        .mobile-user-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .mobile-user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: var(--bg-elevated);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .mobile-sync-status {
+            font-size: 0.85rem;
+        }
+
+        .mobile-user-name {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .mobile-profile-wrapper {
+            position: relative;
+        }
+
+        .mobile-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            min-width: 180px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            z-index: 1000;
+            overflow: hidden;
+        }
+
+        .mobile-dropdown.open {
+            display: block;
+        }
+
+        .mobile-dropdown-email {
+            padding: 12px 16px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .mobile-dropdown-divider {
+            height: 1px;
+            background: var(--border);
+        }
+
+        .mobile-dropdown-item {
+            display: block;
+            width: 100%;
+            padding: 12px 16px;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .mobile-dropdown-item:hover,
+        .mobile-dropdown-item:active {
+            background: var(--bg-elevated);
+        }
+
         /* Unified Search Bar */
         .search-bar-unified {
             display: none;
@@ -2228,13 +2311,30 @@
                 <div class="logo">
                     <img src=".\images\logo.png" alt="HelmetPulse Logo" style="height: 50px; width: auto;">
                 </div>
-                <button type="button" class="profile-icon" id="mobileProfileIcon" aria-label="Account">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                    <span class="notification-dot" id="mobileNotificationDot"></span>
-                </button>
+                <div class="mobile-user-area">
+                    <!-- Logged in: show sync + name -->
+                    <div class="mobile-user-info" id="mobileUserInfo" style="display: none;">
+                        <span class="mobile-sync-status">☁️</span>
+                        <span class="mobile-user-name" id="mobileUserName">User</span>
+                    </div>
+                    <!-- Profile icon with dropdown -->
+                    <div class="mobile-profile-wrapper">
+                        <button type="button" class="profile-icon" id="mobileProfileIcon" aria-label="Account">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                            <span class="notification-dot" id="mobileNotificationDot"></span>
+                        </button>
+                        <!-- Mobile Dropdown Menu -->
+                        <div class="mobile-dropdown" id="mobileDropdown">
+                            <div class="mobile-dropdown-email" id="mobileUserEmail">user@email.com</div>
+                            <div class="mobile-dropdown-divider"></div>
+                            <button class="mobile-dropdown-item" onclick="exportToCSV(); closeMobileDropdown();">📥 Export CSV</button>
+                            <button class="mobile-dropdown-item" onclick="logout(); closeMobileDropdown();">🚪 Logout</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Guest Banner -->
@@ -2729,7 +2829,7 @@
 
                     setTimeout(function() {
                         if (currentUser) {
-                            toggleDropdown();
+                            toggleMobileDropdown();
                         } else {
                             openAuthModal('login');
                         }
@@ -2740,9 +2840,17 @@
 
                 mobileProfileIcon.addEventListener('click', function(e) {
                     e.preventDefault();
+                    e.stopPropagation();
                     handleProfileIconTap();
                 });
             }
+
+            // Close mobile dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.mobile-profile-wrapper')) {
+                    closeMobileDropdown();
+                }
+            });
 
             // Check if user is logged in
             if (authToken) {
@@ -3030,6 +3138,9 @@
             const userActions = document.getElementById('userActions');
             const guestBanner = document.getElementById('guestBanner');
             const mobileNotificationDot = document.getElementById('mobileNotificationDot');
+            const mobileUserInfo = document.getElementById('mobileUserInfo');
+            const mobileUserName = document.getElementById('mobileUserName');
+            const mobileUserEmail = document.getElementById('mobileUserEmail');
 
             if (currentUser) {
                 guestActions.style.display = 'none';
@@ -3037,19 +3148,36 @@
                 guestBanner.style.display = 'none';
                 if (mobileNotificationDot) mobileNotificationDot.style.display = 'none';
 
+                // Desktop user info
                 document.getElementById('userAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
                 document.getElementById('userName').textContent = currentUser.name;
                 document.getElementById('userEmail').textContent = currentUser.email;
+
+                // Mobile user info
+                if (mobileUserInfo) mobileUserInfo.style.display = 'flex';
+                if (mobileUserName) mobileUserName.textContent = currentUser.name;
+                if (mobileUserEmail) mobileUserEmail.textContent = currentUser.email;
             } else {
                 guestActions.style.display = 'flex';
                 userActions.style.display = 'none';
                 guestBanner.style.display = 'flex';
                 if (mobileNotificationDot) mobileNotificationDot.style.display = 'block';
+
+                // Hide mobile user info when logged out
+                if (mobileUserInfo) mobileUserInfo.style.display = 'none';
             }
         }
 
         function toggleDropdown() {
             document.getElementById('userDropdown').classList.toggle('open');
+        }
+
+        function toggleMobileDropdown() {
+            document.getElementById('mobileDropdown').classList.toggle('open');
+        }
+
+        function closeMobileDropdown() {
+            document.getElementById('mobileDropdown').classList.remove('open');
         }
 
         function closeDropdown() {

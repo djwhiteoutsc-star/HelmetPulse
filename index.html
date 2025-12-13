@@ -1519,14 +1519,15 @@
         .mobile-user-trigger {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 14px;
+            gap: 6px;
+            padding: 6px 10px;
             background: var(--bg-elevated);
-            border-radius: 24px;
+            border-radius: 20px;
             border: 1px solid var(--border);
             cursor: pointer;
             transition: all 0.2s;
             -webkit-tap-highlight-color: transparent;
+            max-width: 140px;
         }
 
         .mobile-user-trigger:hover,
@@ -1536,23 +1537,24 @@
         }
 
         .mobile-sync-status {
-            font-size: 0.85rem;
+            font-size: 0.75rem;
+            flex-shrink: 0;
         }
 
         .mobile-user-name {
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             font-weight: 500;
             color: var(--text-primary);
-            max-width: 80px;
+            max-width: 70px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
         .mobile-dropdown-arrow {
-            font-size: 0.6rem;
+            font-size: 0.55rem;
             color: var(--text-muted);
-            margin-left: 2px;
+            flex-shrink: 0;
         }
 
         .mobile-dropdown {

@@ -1512,17 +1512,27 @@
         .mobile-user-area {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
+            position: relative;
         }
 
-        .mobile-user-info {
+        .mobile-user-trigger {
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 6px 12px;
+            padding: 8px 14px;
             background: var(--bg-elevated);
-            border-radius: 20px;
+            border-radius: 24px;
             border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .mobile-user-trigger:hover,
+        .mobile-user-trigger:active {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-primary);
         }
 
         .mobile-sync-status {
@@ -1533,14 +1543,16 @@
             font-size: 0.85rem;
             font-weight: 500;
             color: var(--text-primary);
-            max-width: 100px;
+            max-width: 80px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
-        .mobile-profile-wrapper {
-            position: relative;
+        .mobile-dropdown-arrow {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            margin-left: 2px;
         }
 
         .mobile-dropdown {
@@ -1550,9 +1562,9 @@
             right: 0;
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            min-width: 180px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            border-radius: var(--radius-lg);
+            min-width: 220px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.5);
             z-index: 1000;
             overflow: hidden;
         }
@@ -1561,11 +1573,48 @@
             display: block;
         }
 
+        .mobile-dropdown-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: var(--bg-elevated);
+        }
+
+        .mobile-dropdown-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1rem;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .mobile-dropdown-user-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .mobile-dropdown-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         .mobile-dropdown-email {
-            padding: 12px 16px;
             font-size: 0.75rem;
             color: var(--text-muted);
-            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .mobile-dropdown-divider {
@@ -1574,9 +1623,10 @@
         }
 
         .mobile-dropdown-item {
-            display: block;
+            display: flex;
+            align-items: center;
             width: 100%;
-            padding: 12px 16px;
+            padding: 14px 16px;
             background: none;
             border: none;
             color: var(--text-primary);
@@ -1584,6 +1634,7 @@
             text-align: left;
             cursor: pointer;
             transition: background 0.15s;
+            gap: 8px;
         }
 
         .mobile-dropdown-item:hover,
@@ -2311,28 +2362,33 @@
                 <div class="logo">
                     <img src=".\images\logo.png" alt="HelmetPulse Logo" style="height: 50px; width: auto;">
                 </div>
-                <div class="mobile-user-area">
-                    <!-- Logged in: show sync + name -->
-                    <div class="mobile-user-info" id="mobileUserInfo" style="display: none;">
+                <div class="mobile-user-area" id="mobileUserArea">
+                    <!-- Logged in: clickable user info trigger -->
+                    <button type="button" class="mobile-user-trigger" id="mobileUserTrigger" style="display: none;">
                         <span class="mobile-sync-status">☁️</span>
                         <span class="mobile-user-name" id="mobileUserName">User</span>
-                    </div>
-                    <!-- Profile icon with dropdown -->
-                    <div class="mobile-profile-wrapper">
-                        <button type="button" class="profile-icon" id="mobileProfileIcon" aria-label="Account">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="12" cy="7" r="4"></circle>
-                            </svg>
-                            <span class="notification-dot" id="mobileNotificationDot"></span>
-                        </button>
-                        <!-- Mobile Dropdown Menu -->
-                        <div class="mobile-dropdown" id="mobileDropdown">
-                            <div class="mobile-dropdown-email" id="mobileUserEmail">user@email.com</div>
-                            <div class="mobile-dropdown-divider"></div>
-                            <button class="mobile-dropdown-item" onclick="exportToCSV(); closeMobileDropdown();">📥 Export CSV</button>
-                            <button class="mobile-dropdown-item" onclick="logout(); closeMobileDropdown();">🚪 Logout</button>
+                        <span class="mobile-dropdown-arrow">▼</span>
+                    </button>
+                    <!-- Profile icon (for guest state) -->
+                    <button type="button" class="profile-icon" id="mobileProfileIcon" aria-label="Account">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <span class="notification-dot" id="mobileNotificationDot"></span>
+                    </button>
+                    <!-- Mobile Dropdown Menu -->
+                    <div class="mobile-dropdown" id="mobileDropdown">
+                        <div class="mobile-dropdown-header">
+                            <div class="mobile-dropdown-avatar" id="mobileUserAvatar">U</div>
+                            <div class="mobile-dropdown-user-info">
+                                <div class="mobile-dropdown-name" id="mobileDropdownName">User</div>
+                                <div class="mobile-dropdown-email" id="mobileUserEmail">user@email.com</div>
+                            </div>
                         </div>
+                        <div class="mobile-dropdown-divider"></div>
+                        <button class="mobile-dropdown-item" onclick="exportToCSV(); closeMobileDropdown();">📥 Export CSV</button>
+                        <button class="mobile-dropdown-item" onclick="logout(); closeMobileDropdown();">🚪 Logout</button>
                     </div>
                 </div>
             </div>
@@ -2845,9 +2901,19 @@
                 });
             }
 
+            // Mobile user trigger click handler (when logged in)
+            const mobileUserTrigger = document.getElementById('mobileUserTrigger');
+            if (mobileUserTrigger) {
+                mobileUserTrigger.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleMobileDropdown();
+                });
+            }
+
             // Close mobile dropdown when clicking outside
             document.addEventListener('click', function(e) {
-                if (!e.target.closest('.mobile-profile-wrapper')) {
+                if (!e.target.closest('.mobile-user-area')) {
                     closeMobileDropdown();
                 }
             });
@@ -3138,33 +3204,42 @@
             const userActions = document.getElementById('userActions');
             const guestBanner = document.getElementById('guestBanner');
             const mobileNotificationDot = document.getElementById('mobileNotificationDot');
-            const mobileUserInfo = document.getElementById('mobileUserInfo');
+            const mobileProfileIcon = document.getElementById('mobileProfileIcon');
+            const mobileUserTrigger = document.getElementById('mobileUserTrigger');
             const mobileUserName = document.getElementById('mobileUserName');
             const mobileUserEmail = document.getElementById('mobileUserEmail');
+            const mobileUserAvatar = document.getElementById('mobileUserAvatar');
+            const mobileDropdownName = document.getElementById('mobileDropdownName');
 
             if (currentUser) {
                 guestActions.style.display = 'none';
                 userActions.style.display = 'flex';
                 guestBanner.style.display = 'none';
-                if (mobileNotificationDot) mobileNotificationDot.style.display = 'none';
 
                 // Desktop user info
                 document.getElementById('userAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
                 document.getElementById('userName').textContent = currentUser.name;
                 document.getElementById('userEmail').textContent = currentUser.email;
 
+                // Mobile: show user trigger, hide profile icon
+                if (mobileProfileIcon) mobileProfileIcon.style.display = 'none';
+                if (mobileUserTrigger) mobileUserTrigger.style.display = 'flex';
+                if (mobileNotificationDot) mobileNotificationDot.style.display = 'none';
+
                 // Mobile user info
-                if (mobileUserInfo) mobileUserInfo.style.display = 'flex';
                 if (mobileUserName) mobileUserName.textContent = currentUser.name;
                 if (mobileUserEmail) mobileUserEmail.textContent = currentUser.email;
+                if (mobileUserAvatar) mobileUserAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
+                if (mobileDropdownName) mobileDropdownName.textContent = currentUser.name;
             } else {
                 guestActions.style.display = 'flex';
                 userActions.style.display = 'none';
                 guestBanner.style.display = 'flex';
-                if (mobileNotificationDot) mobileNotificationDot.style.display = 'block';
 
-                // Hide mobile user info when logged out
-                if (mobileUserInfo) mobileUserInfo.style.display = 'none';
+                // Mobile: show profile icon, hide user trigger
+                if (mobileProfileIcon) mobileProfileIcon.style.display = 'flex';
+                if (mobileUserTrigger) mobileUserTrigger.style.display = 'none';
+                if (mobileNotificationDot) mobileNotificationDot.style.display = 'block';
             }
         }
 

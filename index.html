@@ -1006,7 +1006,7 @@
 
         .card-prices {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr;
             gap: 12px;
             margin-bottom: 12px;
         }
@@ -3477,26 +3477,14 @@
                                 <button class="card-action-btn delete" onclick="deleteCard(${i})" title="Delete">×</button>
                             </div>
                         </div>
-                        ${card.totalResults === 0 ? `
-                        <div class="no-comps-state">
-                            <div class="no-comps-icon">📊</div>
-                            <div class="no-comps-text">No Comps Found</div>
-                            <div class="no-comps-hint">Try checking the spelling or search terms</div>
-                        </div>
-                        ` : `
                         <div class="card-prices">
                             <div class="price-block">
                                 <div class="price-label">Current Value</div>
                                 <div class="price-value">${card.currentPrice ? '$' + card.currentPrice.toFixed(2) : '—'}</div>
                             </div>
-                            <div class="price-block">
-                                <div class="price-label">Last Week</div>
-                                <div class="price-value">${card.lastPrice ? '$' + card.lastPrice.toFixed(2) : '—'}</div>
-                            </div>
                         </div>
                         `}
                         ${card.totalResults !== 0 && card.minPrice && card.maxPrice ? `<div class="price-range">Range: $${card.minPrice.toFixed(2)} — $${card.maxPrice.toFixed(2)}</div>` : ''}
-                        ${card.totalResults !== 0 ? `<span class="change-badge ${changeClass}">${card.change !== null ? (card.change > 0 ? '+' : '') + card.change.toFixed(1) + '%' : 'No data yet'}</span>` : ''}
                         <div class="cost-basis-row">
                             <span class="cost-label">Cost:</span>
                             <div class="cost-input-wrap">
@@ -3506,7 +3494,6 @@
                             ${profit !== null ? `<span class="profit-display ${profit >= 0 ? 'profit' : 'loss'}">${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}</span>` : ''}
                         </div>
                         <div class="card-footer">
-                            <a href="${card.ebayUrl || buildEbayUrl(card.query)}" target="_blank" class="comps-link">View comps →</a>
                             <span class="last-updated">${card.lastUpdated ? formatDate(card.lastUpdated) : ''}</span>
                         </div>
                     </div>

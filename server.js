@@ -818,11 +818,11 @@ app.get('/api/helmets/suggestions', async (req, res) => {
             return res.status(500).json({ error: 'Database not configured' });
         }
 
-        // Search helmets by name (case-insensitive partial match) - fetch more to allow grouping
+        // Search helmets by player name primarily (case-insensitive partial match) - fetch more to allow grouping
         const { data: helmets, error } = await supabase
             .from('helmets')
             .select('id, name, player, team, helmet_type, design_type')
-            .or(`name.ilike.%${query}%,player.ilike.%${query}%,team.ilike.%${query}%`)
+            .or(`player.ilike.%${query}%,name.ilike.%${query}%`)
             .order('player')
             .limit(50);
 

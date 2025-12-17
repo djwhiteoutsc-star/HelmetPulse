@@ -16,6 +16,7 @@ const cheerio = require('cheerio');
 const rateLimit = require('express-rate-limit');
 const NodeCache = require('node-cache');
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
 const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
@@ -46,6 +47,18 @@ const EMAIL_FROM = process.env.EMAIL_FROM || 'HelmetPulse <noreply@helmetpulse.c
 
 // reCAPTCHA Configuration
 const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
+
+// Security secrets (MUST be set in environment variables for production)
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+const PASSWORD_SALT = process.env.PASSWORD_SALT || crypto.randomBytes(16).toString('hex');
+
+// Warn if using auto-generated secrets (not persistent across restarts)
+if (!process.env.JWT_SECRET) {
+    console.warn('⚠️  WARNING: JWT_SECRET not set - using random value (tokens will invalidate on restart)');
+}
+if (!process.env.PASSWORD_SALT) {
+    console.warn('⚠️  WARNING: PASSWORD_SALT not set - using random value (legacy passwords may break)');
+}
 
 // Initialize Anthropic client
 const anthropic = ANTHROPIC_API_KEY ? new Anthropic({ apiKey: ANTHROPIC_API_KEY }) : null;
@@ -125,44 +138,9 @@ app.use('/api/', limiter);
 // ============================================
 const AIRTABLE_BASE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}`;
 
-// Debug endpoint to test Airtable connection
-app.get('/api/debug/airtable', async (req, res) => {
-    const testUrl = `${AIRTABLE_BASE_URL}/${TABLES.USERS}?maxRecords=1`;
-
-    console.log('=== AIRTABLE DEBUG ===');
-    console.log('Base ID:', AIRTABLE_BASE_ID);
-    console.log('API Key (first 20 chars):', AIRTABLE_API_KEY ? AIRTABLE_API_KEY.substring(0, 20) + '...' : 'NOT SET');
-    console.log('Table ID:', TABLES.USERS);
-    console.log('Full URL:', testUrl);
-
-    try {
-        const response = await fetch(testUrl, {
-            headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
-        });
-
-        const data = await response.text();
-        console.log('Response status:', response.status);
-        console.log('Response body:', data);
-
-        res.json({
-            baseId: AIRTABLE_BASE_ID || 'NOT SET',
-            apiKeySet: !!AIRTABLE_API_KEY,
-            apiKeyPrefix: AIRTABLE_API_KEY ? AIRTABLE_API_KEY.substring(0, 20) : null,
-            tableId: TABLES.USERS,
-            testUrl: testUrl,
-            responseStatus: response.status,
-            responseBody: JSON.parse(data)
-        });
-    } catch (error) {
-        res.json({
-            baseId: AIRTABLE_BASE_ID || 'NOT SET',
-            apiKeySet: !!AIRTABLE_API_KEY,
-            tableId: TABLES.USERS,
-            testUrl: testUrl,
-            error: error.message
-        });
-    }
-});
+// Debug endpoint - DISABLED in production for security
+// Uncomment only for local development debugging
+// app.get('/api/debug/airtable', async (req, res) => { ... });
 
 // Format date for Airtable (MM/DD/YYYY)
 function formatDateForAirtable(date = new Date()) {
@@ -227,20 +205,42 @@ async function getUserById(recordId) {
 // ============================================
 // AUTH HELPERS
 // ============================================
+
+// Legacy hash function - for backwards compatibility with existing passwords
+// TODO: Migrate all users to bcrypt and remove this function
+function hashPasswordLegacy(password) {
+    return '$2b$12$' + crypto.createHash('sha256').update(password + PASSWORD_SALT).digest('base64').substring(0, 53);
+}
+
+// Proper bcrypt hash for new passwords
+async function hashPasswordSecure(password) {
+    return await bcrypt.hash(password, 12);
+}
+
+// Verify password - tries bcrypt first, then legacy
+async function verifyPassword(password, storedHash) {
+    // Try bcrypt first (new passwords)
+    if (storedHash.startsWith('$2b$') && storedHash.length > 55) {
+        return await bcrypt.compare(password, storedHash);
+    }
+    // Fall back to legacy hash (old passwords)
+    return hashPasswordLegacy(password) === storedHash;
+}
+
+// For backwards compatibility during transition
 function hashPassword(password) {
-    // Using SHA256 with salt (matches your "Hashed Password" field format)
-    return '$2b$12$' + crypto.createHash('sha256').update(password + 'cardpulse_secure_salt_2024').digest('base64').substring(0, 53);
+    return hashPasswordLegacy(password);
 }
 
 function generateToken() {
-    // Generate JWT-like token
+    // Generate secure JWT-like token
     const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
-    const payload = Buffer.from(JSON.stringify({ 
+    const payload = Buffer.from(JSON.stringify({
         iat: Date.now(),
         exp: Date.now() + (7 * 24 * 60 * 60 * 1000), // 7 days
         jti: crypto.randomBytes(16).toString('hex')
     })).toString('base64url');
-    const signature = crypto.createHmac('sha256', 'cardpulse_jwt_secret')
+    const signature = crypto.createHmac('sha256', JWT_SECRET)
         .update(`${header}.${payload}`).digest('base64url');
     return `${header}.${payload}.${signature}`;
 }
@@ -395,8 +395,8 @@ app.post('/api/auth/register', async (req, res) => {
         if (!email || !email.includes('@')) {
             return res.status(400).json({ error: 'Valid email required' });
         }
-        if (!password || password.length < 6) {
-            return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        if (!password || password.length < 8) {
+            return res.status(400).json({ error: 'Password must be at least 8 characters' });
         }
 
         // Verify CAPTCHA
@@ -595,8 +595,8 @@ app.post('/api/auth/forgot-password', async (req, res) => {
             return res.json({ success: true, message: 'If that email exists, a reset link has been sent' });
         }
 
-        // Generate reset token (6 random digits)
-        const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+        // Generate reset token (6 cryptographically secure random digits)
+        const resetToken = crypto.randomInt(100000, 999999).toString();
         const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
         // Store reset token in user record
@@ -641,8 +641,8 @@ app.post('/api/auth/reset-password', async (req, res) => {
             return res.status(400).json({ error: 'Email, token, and new password are required' });
         }
 
-        if (newPassword.length < 6) {
-            return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        if (newPassword.length < 8) {
+            return res.status(400).json({ error: 'Password must be at least 8 characters' });
         }
 
         const user = await findUserByEmail(email);

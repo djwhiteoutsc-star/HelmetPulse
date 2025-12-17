@@ -38,12 +38,13 @@ const EBAY_APP_ID = process.env.EBAY_APP_ID;
 const EBAY_CERT_ID = process.env.EBAY_CERT_ID;
 const EBAY_ENVIRONMENT = 'PRODUCTION'; // PRODUCTION for real sold prices (5K calls/day)
 
-// Email Configuration
+// Email Configuration (Resend or SMTP)
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const EMAIL_HOST = process.env.EMAIL_HOST;
 const EMAIL_PORT = process.env.EMAIL_PORT || 587;
 const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_PASS = process.env.EMAIL_PASS;
-const EMAIL_FROM = process.env.EMAIL_FROM || 'HelmetPulse <noreply@helmetpulse.com>';
+const EMAIL_FROM = process.env.EMAIL_FROM || 'HelmetPulse <onboarding@resend.dev>';
 
 // reCAPTCHA Configuration
 const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
@@ -63,19 +64,24 @@ if (!process.env.PASSWORD_SALT) {
 // Initialize Anthropic client
 const anthropic = ANTHROPIC_API_KEY ? new Anthropic({ apiKey: ANTHROPIC_API_KEY }) : null;
 
-// Initialize Nodemailer transporter
+// Initialize email (Resend API or Nodemailer SMTP)
 let emailTransporter = null;
-if (EMAIL_HOST && EMAIL_USER && EMAIL_PASS) {
+let useResend = false;
+
+if (RESEND_API_KEY) {
+    useResend = true;
+    console.log('✓ Email configured (Resend API)');
+} else if (EMAIL_HOST && EMAIL_USER && EMAIL_PASS) {
     emailTransporter = nodemailer.createTransport({
         host: EMAIL_HOST,
         port: EMAIL_PORT,
-        secure: EMAIL_PORT == 465, // true for 465, false for other ports
+        secure: EMAIL_PORT == 465,
         auth: {
             user: EMAIL_USER,
             pass: EMAIL_PASS
         }
     });
-    console.log('✓ Email configured');
+    console.log('✓ Email configured (SMTP)');
 } else {
     console.log('⚠ Email not configured - password reset codes will be logged only');
 }
@@ -546,37 +552,71 @@ app.post('/api/auth/logout', authenticateToken, async (req, res) => {
 // EMAIL HELPERS
 // ============================================
 async function sendResetEmail(email, resetToken, userName) {
-    if (!emailTransporter) {
-        console.log(`⚠ Email not configured - Reset code for ${email}: ${resetToken}`);
-        return false;
+    const htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #6366f1;">Reset Your Password</h2>
+            <p>Hi ${userName || 'there'},</p>
+            <p>We received a request to reset your HelmetPulse password. Use the code below to reset your password:</p>
+            <div style="background: #f3f4f6; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
+                <h1 style="color: #1f2937; letter-spacing: 8px; margin: 0; font-size: 32px;">${resetToken}</h1>
+            </div>
+            <p>This code will expire in <strong>1 hour</strong>.</p>
+            <p>If you didn't request this, you can safely ignore this email.</p>
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+            <p style="color: #6b7280; font-size: 14px;">HelmetPulse - Real-time helmet price tracking</p>
+        </div>
+    `;
+
+    // Use Resend API
+    if (useResend) {
+        try {
+            const response = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${RESEND_API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    from: EMAIL_FROM,
+                    to: [email],
+                    subject: 'Reset Your HelmetPulse Password',
+                    html: htmlContent
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Resend API error');
+            }
+
+            console.log(`✓ Reset email sent to ${email} (Resend)`);
+            return true;
+        } catch (error) {
+            console.error('Failed to send reset email (Resend):', error);
+            return false;
+        }
     }
 
-    try {
-        await emailTransporter.sendMail({
-            from: EMAIL_FROM,
-            to: email,
-            subject: 'Reset Your HelmetPulse Password',
-            html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2 style="color: #6366f1;">Reset Your Password</h2>
-                    <p>Hi ${userName || 'there'},</p>
-                    <p>We received a request to reset your HelmetPulse password. Use the code below to reset your password:</p>
-                    <div style="background: #f3f4f6; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
-                        <h1 style="color: #1f2937; letter-spacing: 8px; margin: 0; font-size: 32px;">${resetToken}</h1>
-                    </div>
-                    <p>This code will expire in <strong>1 hour</strong>.</p>
-                    <p>If you didn't request this, you can safely ignore this email.</p>
-                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-                    <p style="color: #6b7280; font-size: 14px;">HelmetPulse - Real-time helmet price tracking</p>
-                </div>
-            `
-        });
-        console.log(`✓ Reset email sent to ${email}`);
-        return true;
-    } catch (error) {
-        console.error('Failed to send reset email:', error);
-        return false;
+    // Use Nodemailer SMTP
+    if (emailTransporter) {
+        try {
+            await emailTransporter.sendMail({
+                from: EMAIL_FROM,
+                to: email,
+                subject: 'Reset Your HelmetPulse Password',
+                html: htmlContent
+            });
+            console.log(`✓ Reset email sent to ${email} (SMTP)`);
+            return true;
+        } catch (error) {
+            console.error('Failed to send reset email (SMTP):', error);
+            return false;
+        }
     }
+
+    // No email configured
+    console.log(`⚠ Email not configured - Reset code for ${email}: ${resetToken}`);
+    return false;
 }
 
 // Forgot Password - Request reset token

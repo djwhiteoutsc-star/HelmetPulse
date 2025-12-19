@@ -225,11 +225,17 @@ async function hashPasswordSecure(password) {
 
 // Verify password - tries bcrypt first, then legacy
 async function verifyPassword(password, storedHash) {
-    // Try bcrypt first (new passwords)
-    if (storedHash.startsWith('$2b$') && storedHash.length > 55) {
-        return await bcrypt.compare(password, storedHash);
+    if (!storedHash) return false;
+
+    // Try bcrypt compare first (works for real bcrypt hashes)
+    try {
+        const bcryptMatch = await bcrypt.compare(password, storedHash);
+        if (bcryptMatch) return true;
+    } catch (e) {
+        // bcrypt.compare failed - hash might be legacy format
     }
-    // Fall back to legacy hash (old passwords)
+
+    // Fall back to legacy hash comparison
     return hashPasswordLegacy(password) === storedHash;
 }
 

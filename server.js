@@ -711,7 +711,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
         // Update password and clear reset token
         await airtableRequest(TABLES.USERS, 'PATCH', {
             fields: {
-                'Password Hash': hashedPassword,
+                'Hashed Password': hashedPassword,
                 'Reset Token': '',
                 'Reset Token Expires': ''
             }

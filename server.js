@@ -639,11 +639,11 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         const resetToken = crypto.randomInt(100000, 999999).toString();
         const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-        // Store reset token in user record
+        // Store reset token in user record (use ISO format to preserve time)
         await airtableRequest(TABLES.USERS, 'PATCH', {
             fields: {
                 'Reset Token': resetToken,
-                'Reset Token Expires': formatDateForAirtable(resetExpires)
+                'Reset Token Expires': resetExpires.toISOString()
             }
         }, user.id);
 

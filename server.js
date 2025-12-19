@@ -484,9 +484,10 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
-        // Verify password
-        const hashedInput = hashPassword(password);
-        if (user.fields['Hashed Password'] !== hashedInput) {
+        // Verify password (supports both bcrypt and legacy hashes)
+        const storedHash = user.fields['Hashed Password'];
+        const passwordValid = await verifyPassword(password, storedHash);
+        if (!passwordValid) {
             await logAccess(user.id, 'Login Failure', req, null, 'Invalid password');
             return res.status(401).json({ error: 'Invalid email or password' });
         }

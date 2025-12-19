@@ -659,8 +659,8 @@ app.post('/api/auth/forgot-password', async (req, res) => {
             message: 'If that email exists, a reset code has been sent to your email'
         };
 
-        // Include debug token only if email is not configured (for testing)
-        if (!emailTransporter) {
+        // Include debug token only if NO email is configured (for local testing only)
+        if (!emailTransporter && !useResend) {
             response._debug_token = resetToken;
         }
 

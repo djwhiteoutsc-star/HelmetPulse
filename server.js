@@ -124,8 +124,37 @@ async function throttleEbayApi() {
 
 // Middleware
 app.set('trust proxy', 1); // Trust first proxy (Render's load balancer)
-app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
+
+// CORS - restrict to your domains in production
+const allowedOrigins = [
+    'https://www.helmetpulse.com',
+    'https://helmetpulse.com',
+    'https://helmetpulse.onrender.com',
+    'http://localhost:3000'
+];
+app.use(cors({
+    origin: function(origin, callback) {
+        // Allow requests with no origin (mobile apps, curl, etc.)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(null, false);
+    },
+    credentials: true
+}));
+
+app.use(express.json({ limit: '1mb' })); // Limit payload size
+
+// Security headers
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    next();
+});
 
 // Serve static files (for production)
 app.use(express.static(path.join(__dirname, '.')));
@@ -135,9 +164,22 @@ app.use('/images', express.static(path.join(__dirname, 'images')));
 const limiter = rateLimit({
     windowMs: 60 * 1000,
     max: 30,
-    message: { error: 'Too many requests, please try again later.' }
+    message: { error: 'Too many requests, please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false
 });
 app.use('/api/', limiter);
+
+// Stricter rate limit for auth endpoints (prevent brute force)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // 10 attempts per 15 minutes
+    message: { error: 'Too many login attempts, please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
 
 // ============================================
 // AIRTABLE HELPERS
@@ -180,20 +222,37 @@ async function airtableRequest(table, method = 'GET', body = null, recordId = nu
     return response.json();
 }
 
+// Safely escape strings for Airtable formula queries
+function escapeAirtableString(str) {
+    if (!str || typeof str !== 'string') return '';
+    // Escape backslashes first, then single quotes
+    return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+// Validate email format
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
+
 async function findUserByEmail(email) {
-    const formula = `{Email Address} = '${email.replace(/'/g, "\\'")}'`;
+    if (!email || !isValidEmail(email)) return null;
+
+    const formula = `{Email Address} = '${escapeAirtableString(email)}'`;
     const url = `${AIRTABLE_BASE_URL}/${encodeURIComponent(TABLES.USERS)}?filterByFormula=${encodeURIComponent(formula)}`;
-    
+
     const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
     });
-    
+
     const data = await response.json();
     return data.records && data.records.length > 0 ? data.records[0] : null;
 }
 
 async function findTokenByValue(token) {
-    const formula = `{Token Value} = '${token.replace(/'/g, "\\'")}'`;
+    if (!token || typeof token !== 'string') return null;
+
+    const formula = `{Token Value} = '${escapeAirtableString(token)}'`;
     const url = `${AIRTABLE_BASE_URL}/${encodeURIComponent(TABLES.JWT_TOKENS)}?filterByFormula=${encodeURIComponent(formula)}`;
     
     const response = await fetch(url, {

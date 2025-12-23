@@ -1422,6 +1422,10 @@
             border-color: var(--danger);
             box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
         }
+        .toast.info {
+            border-color: var(--accent-primary);
+            box-shadow: 0 4px 20px rgba(167, 139, 250, 0.3);
+        }
 
         footer {
             border-top: 1px solid var(--border);
@@ -3441,9 +3445,9 @@
         function renderWatchlist() {
             const el = document.getElementById('watchlist');
 
-            // Require login to see watchlist
+            // Show welcome message for guests
             if (!currentUser) {
-                el.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🔐</div><h3>Sign in to view your watchlist</h3><p>Create a free account to start tracking helmets</p><button class="btn btn-primary" style="margin-top:16px;" onclick="openAuthModal(\'register\')">Get Started</button></div>';
+                el.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🏈</div><h3>Welcome to HelmetPulse!</h3><p>Search for any signed helmet above to see prices.<br>Create a free account to track your collection.</p><button class="btn btn-primary" style="margin-top:16px;" onclick="openAuthModal(\'register\')">Create Free Account</button><button class="btn btn-secondary" style="margin-top:8px; margin-left:8px;" onclick="openAuthModal(\'login\')">Log In</button></div>';
                 return;
             }
 
@@ -3510,7 +3514,8 @@
 
             // Require login to add cards
             if (!currentUser) {
-                openAuthModal('register');
+                showToast('Create a free account to track helmet prices!', 'info');
+                setTimeout(() => openAuthModal('register'), 500);
                 return;
             }
 
@@ -3556,7 +3561,8 @@
 
             // Require login to add cards
             if (!currentUser) {
-                openAuthModal('register');
+                showToast('Create a free account to track helmet prices!', 'info');
+                setTimeout(() => openAuthModal('register'), 500);
                 return;
             }
 

@@ -1,12 +1,13 @@
 /**
- * CardPulse Backend Server with Airtable Auth
- * 
+ * CardPulse Backend Server with Supabase Auth
+ *
  * Features:
- * - User registration & login via Airtable
+ * - User registration & login via Supabase
  * - JWT token management
  * - Access logging
  * - Persistent watchlist storage
- * - Firecrawl API for eBay scraping
+ * - eBay API for sold price data
+ * - Firecrawl API fallback for eBay scraping
  */
 
 const express = require('express');
@@ -29,8 +30,6 @@ const PORT = process.env.PORT || 3000;
 // 🔑 API KEYS - Set via environment variables
 // ============================================
 const FIRECRAWL_API_KEY = process.env.FIRECRAWL_API_KEY;
-const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
-const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 // eBay API Credentials (Production for real data)
@@ -95,12 +94,7 @@ const supabase = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPAB
 let ebayAccessToken = null;
 let ebayTokenExpiry = 0;
 
-// Airtable table IDs (more reliable than names)
-const TABLES = {
-    USERS: 'tblGhbSWtKe9R57dr',
-    JWT_TOKENS: 'tblZzDYW0cr7JtsqK',
-    ACCESS_LOGS: 'tblzaGZy1LYvABqSf'
-};
+// Auth is now handled by Supabase (migrated from Airtable)
 
 // Cache for price lookups (24 hours to reduce API calls)
 const cache = new NodeCache({ stdTTL: 86400 }); // 24 hours = 86400 seconds
@@ -182,52 +176,8 @@ app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
 
 // ============================================
-// AIRTABLE HELPERS
+// SUPABASE AUTH HELPERS
 // ============================================
-const AIRTABLE_BASE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}`;
-
-// Debug endpoint - DISABLED in production for security
-// Uncomment only for local development debugging
-// app.get('/api/debug/airtable', async (req, res) => { ... });
-
-// Format date for Airtable (MM/DD/YYYY)
-function formatDateForAirtable(date = new Date()) {
-    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-}
-
-async function airtableRequest(table, method = 'GET', body = null, recordId = null) {
-    let url = `${AIRTABLE_BASE_URL}/${encodeURIComponent(table)}`;
-    if (recordId) url += `/${recordId}`;
-    
-    const options = {
-        method,
-        headers: {
-            'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-            'Content-Type': 'application/json'
-        }
-    };
-    
-    if (body && (method === 'POST' || method === 'PATCH')) {
-        options.body = JSON.stringify(body);
-    }
-    
-    const response = await fetch(url, options);
-    
-    if (!response.ok) {
-        const error = await response.text();
-        console.error('Airtable error:', response.status, error);
-        throw new Error(`Airtable error: ${response.status}`);
-    }
-    
-    return response.json();
-}
-
-// Safely escape strings for Airtable formula queries
-function escapeAirtableString(str) {
-    if (!str || typeof str !== 'string') return '';
-    // Escape backslashes first, then single quotes
-    return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-}
 
 // Validate email format
 function isValidEmail(email) {
@@ -236,35 +186,131 @@ function isValidEmail(email) {
 }
 
 async function findUserByEmail(email) {
-    if (!email || !isValidEmail(email)) return null;
+    if (!email || !isValidEmail(email) || !supabase) return null;
 
-    const formula = `{Email Address} = '${escapeAirtableString(email)}'`;
-    const url = `${AIRTABLE_BASE_URL}/${encodeURIComponent(TABLES.USERS)}?filterByFormula=${encodeURIComponent(formula)}`;
+    const { data, error } = await supabase
+        .from('auth_users')
+        .select('*')
+        .eq('email', email.toLowerCase())
+        .single();
 
-    const response = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
-    });
+    if (error || !data) return null;
+    return data;
+}
 
-    const data = await response.json();
-    return data.records && data.records.length > 0 ? data.records[0] : null;
+async function findUserById(userId) {
+    if (!userId || !supabase) return null;
+
+    const { data, error } = await supabase
+        .from('auth_users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+    if (error || !data) return null;
+    return data;
 }
 
 async function findTokenByValue(token) {
-    if (!token || typeof token !== 'string') return null;
+    if (!token || typeof token !== 'string' || !supabase) return null;
 
-    const formula = `{Token Value} = '${escapeAirtableString(token)}'`;
-    const url = `${AIRTABLE_BASE_URL}/${encodeURIComponent(TABLES.JWT_TOKENS)}?filterByFormula=${encodeURIComponent(formula)}`;
-    
-    const response = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
-    });
-    
-    const data = await response.json();
-    return data.records && data.records.length > 0 ? data.records[0] : null;
+    const { data, error } = await supabase
+        .from('auth_tokens')
+        .select('*, auth_users(*)')
+        .eq('token_value', token)
+        .single();
+
+    if (error || !data) return null;
+    return data;
 }
 
-async function getUserById(recordId) {
-    return airtableRequest(TABLES.USERS, 'GET', null, recordId);
+async function createUser(email, passwordHash, fullName) {
+    if (!supabase) throw new Error('Database not configured');
+
+    const { data, error } = await supabase
+        .from('auth_users')
+        .insert({
+            email: email.toLowerCase(),
+            password_hash: passwordHash,
+            full_name: fullName
+        })
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
+async function createToken(userId, tokenValue, expirationDate, deviceInfo = null) {
+    if (!supabase) throw new Error('Database not configured');
+
+    const { data, error } = await supabase
+        .from('auth_tokens')
+        .insert({
+            user_id: userId,
+            token_value: tokenValue,
+            expiration_date: expirationDate,
+            device_info: deviceInfo
+        })
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
+async function revokeToken(tokenId) {
+    if (!supabase) return;
+
+    await supabase
+        .from('auth_tokens')
+        .update({ revoked: true })
+        .eq('id', tokenId);
+}
+
+async function logAccess(userId, eventType, req, tokenId = null, notes = '') {
+    if (!supabase) return;
+
+    try {
+        await supabase
+            .from('auth_access_logs')
+            .insert({
+                user_id: userId,
+                token_id: tokenId,
+                event_type: eventType,
+                ip_address: getClientIP(req),
+                device_info: getDeviceInfo(req),
+                notes: notes
+            });
+    } catch (error) {
+        console.error('Failed to log access:', error);
+    }
+}
+
+async function getUserWatchlist(userId) {
+    if (!supabase) return [];
+
+    const { data, error } = await supabase
+        .from('auth_user_watchlists')
+        .select('watchlist_data')
+        .eq('user_id', userId)
+        .single();
+
+    if (error || !data) return [];
+    return data.watchlist_data || [];
+}
+
+async function saveUserWatchlist(userId, watchlistData) {
+    if (!supabase) throw new Error('Database not configured');
+
+    const { error } = await supabase
+        .from('auth_user_watchlists')
+        .upsert({
+            user_id: userId,
+            watchlist_data: watchlistData
+        }, { onConflict: 'user_id' });
+
+    if (error) throw error;
 }
 
 // ============================================
@@ -339,40 +385,39 @@ function getDeviceInfo(req) {
 // ============================================
 async function authenticateToken(req, res, next) {
     const token = req.headers['authorization']?.replace('Bearer ', '');
-    
+
     if (!token) {
         return res.status(401).json({ error: 'No token provided' });
     }
-    
+
     try {
-        // Find token in Airtable
+        // Find token in Supabase
         const tokenRecord = await findTokenByValue(token);
-        
+
         if (!tokenRecord) {
             return res.status(401).json({ error: 'Invalid token' });
         }
-        
+
         // Check if revoked
-        if (tokenRecord.fields['Revoked']) {
+        if (tokenRecord.revoked) {
             return res.status(401).json({ error: 'Token has been revoked' });
         }
-        
+
         // Check if expired
-        const expDate = new Date(tokenRecord.fields['Expiration Date']);
+        const expDate = new Date(tokenRecord.expiration_date);
         if (expDate < new Date()) {
             return res.status(401).json({ error: 'Token has expired' });
         }
-        
-        // Get user from linked record
-        const userLinks = tokenRecord.fields['User'];
-        if (!userLinks || userLinks.length === 0) {
+
+        // Get user from joined data
+        const user = tokenRecord.auth_users;
+        if (!user) {
             return res.status(401).json({ error: 'Token not linked to user' });
         }
-        
-        const user = await getUserById(userLinks[0]);
+
         req.user = user;
         req.userId = user.id;
-        req.tokenRecord = tokenRecord;
+        req.tokenId = tokenRecord.id;
         next();
     } catch (error) {
         console.error('Auth error:', error);
@@ -382,14 +427,13 @@ async function authenticateToken(req, res, next) {
 
 async function optionalAuth(req, res, next) {
     const token = req.headers['authorization']?.replace('Bearer ', '');
-    
+
     if (token) {
         try {
             const tokenRecord = await findTokenByValue(token);
-            if (tokenRecord && !tokenRecord.fields['Revoked']) {
-                const userLinks = tokenRecord.fields['User'];
-                if (userLinks && userLinks.length > 0) {
-                    const user = await getUserById(userLinks[0]);
+            if (tokenRecord && !tokenRecord.revoked) {
+                const user = tokenRecord.auth_users;
+                if (user) {
                     req.user = user;
                     req.userId = user.id;
                 }
@@ -399,33 +443,6 @@ async function optionalAuth(req, res, next) {
         }
     }
     next();
-}
-
-// ============================================
-// ACCESS LOG HELPER
-// ============================================
-async function logAccess(userId, eventType, req, tokenRecordId = null, notes = '') {
-    try {
-        const fields = {
-            'IP Address': getClientIP(req),
-            'Event Type': eventType,
-            'Timestamp': formatDateForAirtable(),
-            'Device Info': getDeviceInfo(req),
-            'Notes': notes
-        };
-        
-        if (userId) {
-            fields['User'] = [userId];
-        }
-        
-        if (tokenRecordId) {
-            fields['JWT Token'] = [tokenRecordId];
-        }
-        
-        await airtableRequest(TABLES.ACCESS_LOGS, 'POST', { fields });
-    } catch (error) {
-        console.error('Failed to log access:', error);
-    }
 }
 
 // ============================================
@@ -485,32 +502,14 @@ app.post('/api/auth/register', async (req, res) => {
             return res.status(400).json({ error: 'Email already registered' });
         }
 
-        // Create user in Airtable
-        const hashedPassword = hashPassword(password);
-        const userRecord = await airtableRequest(TABLES.USERS, 'POST', {
-            fields: {
-                'Full Name': name || email.split('@')[0],
-                'Email Address': email.toLowerCase(),
-                'Hashed Password': hashedPassword,
-                'Account Created': formatDateForAirtable(),
-                'Last Login': formatDateForAirtable(),
-                'Watchlist': '[]'
-            }
-        });
+        // Create user in Supabase with bcrypt password
+        const hashedPassword = await hashPasswordSecure(password);
+        const userRecord = await createUser(email, hashedPassword, name || email.split('@')[0]);
 
         // Create JWT token
         const token = generateToken();
-        const tokenRecord = await airtableRequest(TABLES.JWT_TOKENS, 'POST', {
-            fields: {
-                'Token Value': token,
-                'Expiration Date': formatDateForAirtable(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
-                'Issued At': formatDateForAirtable(),
-                'Revoked': false,
-                'User': [userRecord.id],
-                'Device Info': getDeviceInfo(req),
-                'IP Address': getClientIP(req)
-            }
-        });
+        const expirationDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const tokenRecord = await createToken(userRecord.id, token, expirationDate.toISOString(), getDeviceInfo(req));
 
         // Log the registration
         await logAccess(userRecord.id, 'Login Success', req, tokenRecord.id, 'New account registration');
@@ -522,8 +521,8 @@ app.post('/api/auth/register', async (req, res) => {
             token,
             user: {
                 id: userRecord.id,
-                email: userRecord.fields['Email Address'],
-                name: userRecord.fields['Full Name']
+                email: userRecord.email,
+                name: userRecord.full_name
             }
         });
     } catch (error) {
@@ -543,14 +542,14 @@ app.post('/api/auth/login', async (req, res) => {
 
         // Find user
         const user = await findUserByEmail(email);
-        
+
         if (!user) {
             await logAccess(null, 'Login Failure', req, null, `Failed login attempt for: ${email}`);
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
         // Verify password (supports both bcrypt and legacy hashes)
-        const storedHash = user.fields['Hashed Password'];
+        const storedHash = user.password_hash;
         const passwordValid = await verifyPassword(password, storedHash);
         if (!passwordValid) {
             await logAccess(user.id, 'Login Failure', req, null, 'Invalid password');
@@ -559,22 +558,16 @@ app.post('/api/auth/login', async (req, res) => {
 
         // Create new JWT token
         const token = generateToken();
-        const tokenRecord = await airtableRequest(TABLES.JWT_TOKENS, 'POST', {
-            fields: {
-                'Token Value': token,
-                'Expiration Date': formatDateForAirtable(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
-                'Issued At': formatDateForAirtable(),
-                'Revoked': false,
-                'User': [user.id],
-                'Device Info': getDeviceInfo(req),
-                'IP Address': getClientIP(req)
-            }
-        });
+        const expirationDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const tokenRecord = await createToken(user.id, token, expirationDate.toISOString(), getDeviceInfo(req));
 
         // Update last login
-        await airtableRequest(TABLES.USERS, 'PATCH', {
-            fields: { 'Last Login': formatDateForAirtable() }
-        }, user.id);
+        if (supabase) {
+            await supabase
+                .from('auth_users')
+                .update({ updated_at: new Date().toISOString() })
+                .eq('id', user.id);
+        }
 
         // Log successful login
         await logAccess(user.id, 'Login Success', req, tokenRecord.id);
@@ -586,8 +579,8 @@ app.post('/api/auth/login', async (req, res) => {
             token,
             user: {
                 id: user.id,
-                email: user.fields['Email Address'],
-                name: user.fields['Full Name']
+                email: user.email,
+                name: user.full_name
             }
         });
     } catch (error) {
@@ -600,12 +593,10 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/logout', authenticateToken, async (req, res) => {
     try {
         // Revoke the token
-        await airtableRequest(TABLES.JWT_TOKENS, 'PATCH', {
-            fields: { 'Revoked': true }
-        }, req.tokenRecord.id);
+        await revokeToken(req.tokenId);
 
         // Log logout
-        await logAccess(req.userId, 'Logout', req, req.tokenRecord.id);
+        await logAccess(req.userId, 'Logout', req, req.tokenId);
 
         res.json({ success: true });
     } catch (error) {
@@ -705,19 +696,22 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         const resetToken = crypto.randomInt(100000, 999999).toString();
         const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-        // Store reset token in user record (use ISO format to preserve time)
-        await airtableRequest(TABLES.USERS, 'PATCH', {
-            fields: {
-                'Reset Token': resetToken,
-                'Reset Token Expires': resetExpires.toISOString()
-            }
-        }, user.id);
+        // Store reset token in user record
+        if (supabase) {
+            await supabase
+                .from('auth_users')
+                .update({
+                    reset_token: resetToken,
+                    reset_token_expires: resetExpires.toISOString()
+                })
+                .eq('id', user.id);
+        }
 
         // Log the reset request
         await logAccess(user.id, 'Password Reset Requested', req, null, `Reset token generated for ${email}`);
 
         // Send email with reset token
-        const userName = user.fields['Full Name'];
+        const userName = user.full_name;
         await sendResetEmail(email, resetToken, userName);
 
         const response = {
@@ -758,8 +752,8 @@ app.post('/api/auth/reset-password', async (req, res) => {
         }
 
         // Verify token and expiration
-        const storedToken = user.fields['Reset Token'];
-        const expiresAt = user.fields['Reset Token Expires'] ? new Date(user.fields['Reset Token Expires']) : null;
+        const storedToken = user.reset_token;
+        const expiresAt = user.reset_token_expires ? new Date(user.reset_token_expires) : null;
 
         if (!storedToken || storedToken !== token) {
             await logAccess(user.id, 'Password Reset Failed', req, null, 'Invalid token');
@@ -771,17 +765,20 @@ app.post('/api/auth/reset-password', async (req, res) => {
             return res.status(400).json({ error: 'Reset token has expired' });
         }
 
-        // Hash new password
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        // Hash new password with bcrypt
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
 
         // Update password and clear reset token
-        await airtableRequest(TABLES.USERS, 'PATCH', {
-            fields: {
-                'Hashed Password': hashedPassword,
-                'Reset Token': '',
-                'Reset Token Expires': ''
-            }
-        }, user.id);
+        if (supabase) {
+            await supabase
+                .from('auth_users')
+                .update({
+                    password_hash: hashedPassword,
+                    reset_token: null,
+                    reset_token_expires: null
+                })
+                .eq('id', user.id);
+        }
 
         // Log successful password reset
         await logAccess(user.id, 'Password Reset Success', req, null, 'Password changed via reset token');
@@ -804,8 +801,8 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
     res.json({
         user: {
             id: req.user.id,
-            email: req.user.fields['Email Address'],
-            name: req.user.fields['Full Name']
+            email: req.user.email,
+            name: req.user.full_name
         }
     });
 });
@@ -815,10 +812,9 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
 // ============================================
 
 // Get user's watchlist
-app.get('/api/watchlist', authenticateToken, (req, res) => {
+app.get('/api/watchlist', authenticateToken, async (req, res) => {
     try {
-        const watchlistJson = req.user.fields['Watchlist'] || '[]';
-        const watchlist = JSON.parse(watchlistJson);
+        const watchlist = await getUserWatchlist(req.userId);
         res.json({ watchlist });
     } catch (error) {
         console.error('Get watchlist error:', error);
@@ -830,7 +826,7 @@ app.get('/api/watchlist', authenticateToken, (req, res) => {
 app.put('/api/watchlist', authenticateToken, async (req, res) => {
     try {
         const { watchlist } = req.body;
-        
+
         if (!Array.isArray(watchlist)) {
             return res.status(400).json({ error: 'Watchlist must be an array' });
         }
@@ -840,10 +836,8 @@ app.put('/api/watchlist', authenticateToken, async (req, res) => {
             return res.status(400).json({ error: 'Maximum 10 cards allowed' });
         }
 
-        // Save to Airtable
-        await airtableRequest(TABLES.USERS, 'PATCH', {
-            fields: { 'Watchlist': JSON.stringify(watchlist) }
-        }, req.userId);
+        // Save to Supabase
+        await saveUserWatchlist(req.userId, watchlist);
 
         res.json({ success: true, watchlist });
     } catch (error) {
@@ -856,15 +850,14 @@ app.put('/api/watchlist', authenticateToken, async (req, res) => {
 app.post('/api/watchlist/add', authenticateToken, async (req, res) => {
     try {
         const { card } = req.body;
-        
+
         if (!card || !card.name) {
             return res.status(400).json({ error: 'Card data required' });
         }
 
         // Get current watchlist
-        const watchlistJson = req.user.fields['Watchlist'] || '[]';
-        const watchlist = JSON.parse(watchlistJson);
-        
+        const watchlist = await getUserWatchlist(req.userId);
+
         if (watchlist.length >= 10) {
             return res.status(400).json({ error: 'Maximum 10 cards allowed' });
         }
@@ -874,10 +867,8 @@ app.post('/api/watchlist/add', authenticateToken, async (req, res) => {
         card.addedAt = new Date().toISOString();
         watchlist.push(card);
 
-        // Save to Airtable
-        await airtableRequest(TABLES.USERS, 'PATCH', {
-            fields: { 'Watchlist': JSON.stringify(watchlist) }
-        }, req.userId);
+        // Save to Supabase
+        await saveUserWatchlist(req.userId, watchlist);
 
         res.json({ success: true, card, watchlist });
     } catch (error) {
@@ -891,14 +882,10 @@ app.delete('/api/watchlist/:cardId', authenticateToken, async (req, res) => {
     try {
         const cardId = parseInt(req.params.cardId);
 
-        const watchlistJson = req.user.fields['Watchlist'] || '[]';
-        let watchlist = JSON.parse(watchlistJson);
-
+        let watchlist = await getUserWatchlist(req.userId);
         watchlist = watchlist.filter(c => c.id !== cardId);
 
-        await airtableRequest(TABLES.USERS, 'PATCH', {
-            fields: { 'Watchlist': JSON.stringify(watchlist) }
-        }, req.userId);
+        await saveUserWatchlist(req.userId, watchlist);
 
         res.json({ success: true, watchlist });
     } catch (error) {
@@ -1416,7 +1403,7 @@ app.get('/health', (req, res) => {
         status: 'ok',
         ebayApiConfigured: !!(EBAY_APP_ID && EBAY_CERT_ID),
         firecrawlConfigured: !!FIRECRAWL_API_KEY,
-        airtableConfigured: !!AIRTABLE_API_KEY,
+        supabaseConfigured: !!supabase,
         anthropicConfigured: !!ANTHROPIC_API_KEY,
         queryOptimizer: !!anthropic ? 'enabled' : 'disabled',
         timestamp: new Date().toISOString()
@@ -1665,13 +1652,13 @@ function removeOutliers(listings) {
 app.listen(PORT, () => {
     console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
-║   📈 CardPulse Server (Airtable Edition)                      ║
+║   📈 CardPulse Server (Supabase Edition)                      ║
 ╠═══════════════════════════════════════════════════════════════╣
 ║   Local:      http://localhost:${PORT}                          ║
 ║   Health:     http://localhost:${PORT}/health                   ║
 ║   eBay API:   ${EBAY_APP_ID && EBAY_CERT_ID ? '✓ Production API (5K/day + 24hr cache)' : '✗ Not configured'}             ║
 ║   Firecrawl:  ${FIRECRAWL_API_KEY ? '✓ Fallback ready' : '✗ Missing'}                                  ║
-║   Airtable:   ${AIRTABLE_API_KEY ? '✓ Configured' : '✗ Missing'}                                     ║
+║   Supabase:   ${supabase ? '✓ Connected (Auth + Data)' : '✗ Not configured'}                       ║
 ║   Anthropic:  ${ANTHROPIC_API_KEY ? '✓ Query Optimizer ON' : '✗ Query Optimizer OFF'}                            ║
 ╚═══════════════════════════════════════════════════════════════╝
     `);

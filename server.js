@@ -611,7 +611,7 @@ app.post('/api/auth/logout', authenticateToken, async (req, res) => {
 async function sendResetEmail(email, resetToken, userName) {
     const htmlContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #6366f1;">Reset Your Password</h2>
+            <h2 style="color: #f04a30;">Reset Your Password</h2>
             <p>Hi ${userName || 'there'},</p>
             <p>We received a request to reset your HelmetPulse password. Use the code below to reset your password:</p>
             <div style="background: #f3f4f6; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">

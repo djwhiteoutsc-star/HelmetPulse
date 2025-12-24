@@ -2520,7 +2520,7 @@
             <!-- Guest Banner -->
             <div class="guest-banner" id="guestBanner">
                 <div class="guest-banner-text">
-                    <strong>Create a free account</strong> to save your watchlist and access it from any device.
+                    <strong>Guest Mode</strong> — Track up to 3 helmets. Sign up free to track 10 and sync across devices!
                 </div>
                 <div style="display:flex;gap:8px;">
                     <button class="btn btn-primary btn-sm" onclick="openAuthModal('register')">Sign Up Free</button>
@@ -3521,20 +3521,8 @@
         // DASHBOARD
         // ============================================
         function updateDashboard() {
-            // Reset stats if not logged in
-            if (!currentUser) {
-                document.getElementById('totalValue').textContent = '$0.00';
-                document.getElementById('totalCost').textContent = '$0.00';
-                document.getElementById('totalProfit').textContent = '$0.00';
-                document.getElementById('cardCount').textContent = '0/' + MAX_CARDS;
-                document.getElementById('profitChange').style.display = 'none';
-                // Mobile stats
-                document.getElementById('mobilePortfolioValue').textContent = '$0.00';
-                document.getElementById('mobileTotalCost').textContent = '$0.00';
-                document.getElementById('mobileTotalProfit').textContent = '$0.00';
-                document.getElementById('mobileCardCount').textContent = '0/' + MAX_CARDS;
-                return;
-            }
+            // Show stats for both guests and logged-in users
+            const cardLimit = currentUser ? MAX_CARDS : 3;
 
             let totalValue = 0, totalCost = 0;
             watchlist.forEach(card => {
@@ -3550,13 +3538,13 @@
             document.getElementById('totalCost').textContent = '$' + totalCost.toFixed(2);
             document.getElementById('totalProfit').textContent = (profit >= 0 ? '+$' : '-$') + Math.abs(profit).toFixed(2);
             document.getElementById('totalProfit').style.color = profit >= 0 ? 'var(--success)' : 'var(--danger)';
-            document.getElementById('cardCount').textContent = watchlist.length + '/' + MAX_CARDS;
+            document.getElementById('cardCount').textContent = watchlist.length + '/' + cardLimit;
 
             // Mobile stats
             document.getElementById('mobilePortfolioValue').textContent = '$' + totalValue.toFixed(2);
             document.getElementById('mobileTotalCost').textContent = '$' + totalCost.toFixed(2);
             document.getElementById('mobileTotalProfit').textContent = (profit >= 0 ? '+$' : '-$') + Math.abs(profit).toFixed(2);
-            document.getElementById('mobileCardCount').textContent = watchlist.length + '/' + MAX_CARDS;
+            document.getElementById('mobileCardCount').textContent = watchlist.length + '/' + cardLimit;
 
             const profitChangeEl = document.getElementById('profitChange');
             if (totalCost > 0) {
@@ -3574,9 +3562,9 @@
         function renderWatchlist() {
             const el = document.getElementById('watchlist');
 
-            // Show welcome message for guests
-            if (!currentUser) {
-                el.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🏈</div><h3>Welcome to HelmetPulse!</h3><p>Search for any signed helmet above to see prices.<br>Create a free account to track your collection.</p><button class="btn btn-primary" style="margin-top:16px;" onclick="openAuthModal(\'register\')">Create Free Account</button><button class="btn btn-secondary" style="margin-top:8px; margin-left:8px;" onclick="openAuthModal(\'login\')">Log In</button></div>';
+            // Show welcome message for guests with no watchlist
+            if (!currentUser && watchlist.length === 0) {
+                el.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🏈</div><h3>Welcome to HelmetPulse!</h3><p>Search for any signed helmet above to see live prices.<br>Try it now - no account required!</p></div>';
                 return;
             }
 
@@ -3641,15 +3629,15 @@
         document.getElementById('addCardForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // Require login to add cards
-            if (!currentUser) {
-                showToast('Create a free account to track helmet prices!', 'info');
-                setTimeout(() => openAuthModal('register'), 500);
-                return;
-            }
-
-            if (watchlist.length >= MAX_CARDS) {
-                showToast('Watchlist full! Max ' + MAX_CARDS + ' cards.', 'error');
+            // Guest users get a lower limit
+            const cardLimit = currentUser ? MAX_CARDS : 3;
+            if (watchlist.length >= cardLimit) {
+                if (!currentUser) {
+                    showToast('Create a free account to track up to ' + MAX_CARDS + ' helmets!', 'info');
+                    setTimeout(() => openAuthModal('register'), 500);
+                } else {
+                    showToast('Watchlist full! Max ' + MAX_CARDS + ' cards.', 'error');
+                }
                 return;
             }
 
@@ -3688,15 +3676,15 @@
         document.getElementById('mobileSearchForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // Require login to add cards
-            if (!currentUser) {
-                showToast('Create a free account to track helmet prices!', 'info');
-                setTimeout(() => openAuthModal('register'), 500);
-                return;
-            }
-
-            if (watchlist.length >= MAX_CARDS) {
-                showToast('Watchlist full! Max ' + MAX_CARDS + ' cards.', 'error');
+            // Guest users get a lower limit
+            const cardLimit = currentUser ? MAX_CARDS : 3;
+            if (watchlist.length >= cardLimit) {
+                if (!currentUser) {
+                    showToast('Create a free account to track up to ' + MAX_CARDS + ' helmets!', 'info');
+                    setTimeout(() => openAuthModal('register'), 500);
+                } else {
+                    showToast('Watchlist full! Max ' + MAX_CARDS + ' cards.', 'error');
+                }
                 return;
             }
 

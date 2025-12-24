@@ -2616,10 +2616,15 @@
                 </div>
 
                 <div class="section-header">
-                    <h2 class="section-title"><span>💎</span> My Watchlist</h2>
+                    <h2 class="section-title"><span>🏈</span> My Watchlist</h2>
                     <div class="section-actions">
-                        <button class="btn btn-ghost btn-sm" onclick="exportToCSV()">📥 Export</button>
                         <button class="btn btn-secondary btn-sm" onclick="refreshAllPrices()" id="refreshAllBtn">↻ Refresh All</button>
+                        <div class="user-dropdown" id="watchlistActionsDropdown">
+                            <button class="btn btn-ghost btn-sm dropdown-trigger" onclick="toggleWatchlistDropdown()">⋮</button>
+                            <div class="dropdown-menu" id="watchlistDropdownMenu">
+                                <button class="dropdown-item" onclick="exportToCSV(); closeWatchlistDropdown();">📥 Export to CSV</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -3383,8 +3388,17 @@
             document.getElementById('userDropdown').classList.remove('open');
         }
 
+        function toggleWatchlistDropdown() {
+            document.getElementById('watchlistDropdownMenu').classList.toggle('open');
+        }
+
+        function closeWatchlistDropdown() {
+            document.getElementById('watchlistDropdownMenu').classList.remove('open');
+        }
+
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.user-dropdown')) closeDropdown();
+            if (!e.target.closest('#watchlistActionsDropdown')) closeWatchlistDropdown();
         });
 
         // ============================================
@@ -3567,7 +3581,7 @@
             }
 
             if (watchlist.length === 0) {
-                el.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">📭</div><h3>No helmets yet</h3><p>Add your first helmet above to start tracking</p></div>';
+                el.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🏈</div><h3>No helmets yet</h3><p>Add your first helmet above to start tracking</p></div>';
                 return;
             }
 

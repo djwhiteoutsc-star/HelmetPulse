@@ -532,7 +532,7 @@
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
             color: var(--text-primary);
-            font-size: 0.95rem;
+            font-size: 16px; /* Prevent iOS auto-zoom on focus */
             font-family: inherit;
             transition: all 0.3s;
         }
@@ -806,7 +806,7 @@
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
             color: var(--text-primary);
-            font-size: 0.9rem;
+            font-size: 16px; /* Prevent iOS auto-zoom on focus */
             font-family: inherit;
             transition: all 0.3s;
         }
@@ -1218,13 +1218,13 @@
         .cost-input-wrap span { color: var(--text-muted); font-size: 0.85rem; }
 
         .cost-input {
-            width: 60px;
+            width: 70px;
             padding: 6px 4px;
             background: transparent;
             border: none;
             color: var(--text-primary);
             font-family: 'Space Mono', monospace;
-            font-size: 0.85rem;
+            font-size: 16px; /* Prevent iOS auto-zoom on focus */
         }
 
         .cost-input:focus { outline: none; }
@@ -1801,7 +1801,7 @@
             background: transparent;
             border: none;
             color: var(--text-primary);
-            font-size: 0.95rem;
+            font-size: 16px; /* Prevent iOS auto-zoom on focus */
             outline: none;
         }
 
@@ -2247,7 +2247,7 @@
 
             .form-input, .form-select {
                 padding: 10px;
-                font-size: 0.9rem;
+                font-size: 16px; /* Prevent iOS auto-zoom on focus */
             }
 
             /* Cards */

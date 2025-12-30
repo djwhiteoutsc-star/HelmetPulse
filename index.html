@@ -2454,6 +2454,24 @@
             opacity: 0.7;
         }
 
+        /* Ad with images - clean styling */
+        .ad-placeholder.has-image {
+            background: transparent;
+            border: none;
+            padding: 0;
+            min-height: auto;
+        }
+
+        .ad-placeholder .ad-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: var(--radius-lg);
+            display: block;
+        }
+
+        .ad-placeholder .ad-desktop { display: block; }
+        .ad-placeholder .ad-mobile { display: none; }
+
         /* Mobile ad placeholder ordering */
         @media (max-width: 768px) {
             #watchlistSection .ad-placeholder-1 { order: 4; }
@@ -2463,6 +2481,13 @@
                 min-height: 100px;
                 margin: 12px 0;
             }
+
+            .ad-placeholder.has-image {
+                min-height: auto;
+            }
+
+            .ad-placeholder .ad-desktop { display: none; }
+            .ad-placeholder .ad-mobile { display: block; }
         }
 
         /* Desktop - hide mobile-only ordering if needed */
@@ -2634,9 +2659,9 @@
                 </div>
 
                 <!-- Ad Placeholder 1 -->
-                <div class="ad-placeholder ad-placeholder-1">
-                    <span class="ad-placeholder-label">[AD PLACEHOLDER]</span>
-                    <span>Advertiser Space Available</span>
+                <div class="ad-placeholder ad-placeholder-1 has-image">
+                    <img src="images/desktopAd.png" alt="Advertisement" class="ad-image ad-desktop">
+                    <img src="images/mobileAd.png" alt="Advertisement" class="ad-image ad-mobile">
                 </div>
 
                 <!-- API Warning -->

@@ -1,15 +1,16 @@
 const XLSX = require('xlsx');
+const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 const { upsertPrice, findHelmet, validateSchema, extractTeamFromName } = require('./lib/price-utils');
 require('dotenv').config();
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-const filePath = 'C:\\Users\\18036\\Desktop\\CardPulse\\Fanatics\\Inventory 12-8-25.xls';
+const filePath = path.join(__dirname, '..', 'GreatSports', 'Inventory.xls');
 
 // Map design types from spreadsheet to our format
-function parseDesignType(item, type) {
-    const text = (item + ' ' + type).toLowerCase();
+function parseDesignType(item, type, description = '') {
+    const text = (item + ' ' + type + ' ' + description).toLowerCase();
 
     if (text.includes('eclipse')) return 'eclipse';
     if (text.includes('flash')) return 'flash';
@@ -31,14 +32,14 @@ function parseDesignType(item, type) {
 function parseHelmetType(sheetName, type, item) {
     const text = (type + ' ' + item).toLowerCase();
 
-    if (sheetName === 'Mini') return 'mini';
-    if (sheetName === 'Midi') return 'midi';
+    if (sheetName === 'Minis') return 'mini';
+    if (sheetName === 'MIDI') return 'midi';
 
     // Full Size
     if (text.includes('authentic') || text.includes('speedflex')) {
         return 'fullsize-authentic';
     }
-    if (text.includes('replica')) {
+    if (text.includes('replica') || text.includes('rep')) {
         return 'fullsize-replica';
     }
 
@@ -86,7 +87,7 @@ function normalizeTeam(team) {
         'vikings': 'Vikings',
     };
 
-    const lower = team.toLowerCase();
+    const lower = (team || '').toLowerCase();
     return teamMap[lower] || team;
 }
 
@@ -114,39 +115,43 @@ async function importSheet(sheetName, sheet) {
             let team = normalizeTeam(row.Team || '');
             const type = row.Type || '';
             const item = row.Item || row.Description || '';
+            const description = row.Description || '';
+
+            // Get price - different column names per tab
             const price = row.Retail || row.Price || null;
 
+            if (!price || price <= 0) {
+                skipped++;
+                continue;
+            }
+
             const helmetType = parseHelmetType(sheetName, type, item);
-            const designType = parseDesignType(item, type);
+            const designType = parseDesignType(item, type, description);
 
             // Create a descriptive name
-            const name = `${player} ${team} Autographed ${item}`.trim();
+            const name = `${player} ${team} Autographed ${helmetType} Helmet ${designType !== 'regular' ? designType : ''}`.trim();
 
             // If team is still empty, try to extract from the name/item
             if (!team) {
                 team = extractTeamFromName(name) || extractTeamFromName(item) || '';
             }
 
-            // Create eBay search query
-            const ebaySearchQuery = `${player} ${team} autographed signed helmet`.toLowerCase();
-
             // Use the unified findHelmet utility (handles flexible matching)
             const existing = await findHelmet(player, team, helmetType, designType);
 
             if (existing) {
-                // Helmet exists - add/update Fanatics price using unified utility
-                if (price) {
-                    const result = await upsertPrice(existing.id, 'fanatics', price);
-                    if (!result.success) {
-                        console.error(`  ✗ Error updating price for ${player}:`, result.error);
-                        errors++;
-                        continue;
-                    }
+                // Helmet exists - add/update GreatSports price using unified utility
+                const result = await upsertPrice(existing.id, 'greatsports', price);
+                if (!result.success) {
+                    console.error(`  ✗ Error updating price for ${player}:`, result.error);
+                    errors++;
+                    continue;
                 }
                 updated++;
-                console.log(`  ↺ Updated: ${player} - ${team} ${helmetType} ${designType}`);
+                console.log(`  ↺ Updated: ${player} - ${team} ${helmetType} ${designType} ($${price})`);
             } else {
-                // Insert new helmet
+                // Insert new helmet - generate unique identifier (no eBay searches)
+                const uniqueId = `${player}-${team}-${helmetType}-${designType}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`.toLowerCase().replace(/[^a-z0-9-]/g, '');
                 const { data: newHelmet, error } = await supabase
                     .from('helmets')
                     .insert({
@@ -155,7 +160,7 @@ async function importSheet(sheetName, sheet) {
                         team: team,
                         helmet_type: helmetType,
                         design_type: designType,
-                        ebay_search_query: ebaySearchQuery,
+                        ebay_search_query: uniqueId,
                         is_active: true
                     })
                     .select();
@@ -167,8 +172,8 @@ async function importSheet(sheetName, sheet) {
                 }
 
                 // Add price record using unified utility
-                if (price && newHelmet && newHelmet[0]) {
-                    const result = await upsertPrice(newHelmet[0].id, 'fanatics', price);
+                if (newHelmet && newHelmet[0]) {
+                    const result = await upsertPrice(newHelmet[0].id, 'greatsports', price);
                     if (!result.success) {
                         console.error(`  ✗ Error adding price for ${player}:`, result.error);
                     }
@@ -188,7 +193,7 @@ async function importSheet(sheetName, sheet) {
 
 async function main() {
     console.log('===========================================');
-    console.log('  FANATICS INVENTORY IMPORT');
+    console.log('  GREATSPORTS INVENTORY IMPORT');
     console.log('===========================================');
 
     // Validate schema before starting
@@ -205,12 +210,21 @@ async function main() {
 
     const workbook = XLSX.readFile(filePath);
 
+    // Only import helmet tabs (skip jerseys)
+    const helmetTabs = ['Full Size', 'Minis', 'MIDI'];
+
     let totalAdded = 0;
     let totalUpdated = 0;
     let totalSkipped = 0;
     let totalErrors = 0;
 
     for (const sheetName of workbook.SheetNames) {
+        // Skip non-helmet tabs
+        if (!helmetTabs.includes(sheetName)) {
+            console.log(`\n⏭️  Skipping ${sheetName} tab (not helmets)`);
+            continue;
+        }
+
         const sheet = workbook.Sheets[sheetName];
         const result = await importSheet(sheetName, sheet);
 
@@ -225,7 +239,7 @@ async function main() {
     console.log('===========================================');
     console.log(`  New helmets added:    ${totalAdded}`);
     console.log(`  Existing updated:     ${totalUpdated}`);
-    console.log(`  Skipped (no player):  ${totalSkipped}`);
+    console.log(`  Skipped (no data):    ${totalSkipped}`);
     console.log(`  Errors:               ${totalErrors}`);
     console.log('===========================================');
 

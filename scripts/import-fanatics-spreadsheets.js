@@ -1,5 +1,6 @@
 const XLSX = require('xlsx');
 const { createClient } = require('@supabase/supabase-js');
+const { extractTeamFromName } = require('./lib/price-utils');
 require('dotenv').config();
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
@@ -15,29 +16,13 @@ function parseHelmetTitle(title) {
 
     // Try to extract player name (usually at start)
     let playerName = '';
-    let team = '';
-
-    // Simple extraction - take first few words as player name
     const words = title.split(' ');
     if (words.length >= 2) {
         playerName = `${words[0]} ${words[1]}`;
     }
 
-    // Extract team from common patterns
-    const nflTeams = [
-        'Cardinals', 'Falcons', 'Ravens', 'Bills', 'Panthers', 'Bears', 'Bengals', 'Browns',
-        'Cowboys', 'Broncos', 'Lions', 'Packers', 'Texans', 'Colts', 'Jaguars', 'Chiefs',
-        'Raiders', 'Chargers', 'Rams', 'Dolphins', 'Vikings', 'Patriots', 'Saints',
-        'Giants', 'Jets', 'Eagles', 'Steelers', '49ers', 'Seahawks', 'Buccaneers',
-        'Titans', 'Commanders', 'Football Team'
-    ];
-
-    for (const nflTeam of nflTeams) {
-        if (titleLower.includes(nflTeam.toLowerCase())) {
-            team = nflTeam;
-            break;
-        }
-    }
+    // Extract team using shared utility (supports NFL, College, NHL, MLB)
+    const team = extractTeamFromName(title) || '';
 
     return { playerName, team, type };
 }

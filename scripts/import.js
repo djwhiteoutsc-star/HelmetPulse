@@ -95,7 +95,7 @@ async function showStatus() {
     console.log(`📊 Total Helmets: ${totalHelmets}\n`);
 
     // Get price counts by source
-    const sources = ['ebay', 'fanatics', 'rsa', 'radtke', 'pristine'];
+    const sources = ['fanatics', 'rsa', 'radtke', 'pristine', 'signaturesports', 'greatsports'];
     console.log('💰 Prices by Source:');
 
     for (const source of sources) {

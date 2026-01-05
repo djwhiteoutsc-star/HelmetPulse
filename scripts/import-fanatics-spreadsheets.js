@@ -1,6 +1,6 @@
 const XLSX = require('xlsx');
 const { createClient } = require('@supabase/supabase-js');
-const { extractTeamFromName } = require('./lib/price-utils');
+const { extractTeamFromName, upsertPrice } = require('./lib/price-utils');
 require('dotenv').config();
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
@@ -173,34 +173,12 @@ async function importFanaticsSpreadsheets() {
                 saved++;
             }
 
-            // Add price record
-            const { error: priceError } = await supabase
-                .from('helmet_prices')
-                .insert({
-                    helmet_id: helmetId,
-                    median_price: helmet.price,
-                    min_price: helmet.price,
-                    max_price: helmet.price,
-                    total_results: 1,
-                    source: helmet.source
-                });
-
-            if (priceError) {
-                // If source column doesn't exist, try without it
-                if (priceError.message.includes('source')) {
-                    const { error: retry } = await supabase.from('helmet_prices').insert({
-                        helmet_id: helmetId,
-                        median_price: helmet.price,
-                        min_price: helmet.price,
-                        max_price: helmet.price,
-                        total_results: 1
-                    });
-                    if (!retry) pricesAdded++;
-                } else if (pricesAdded === 0) {
-                    console.log(`   ⚠️ Price error: ${priceError.message}`);
-                }
-            } else {
+            // Add price record using shared utility
+            const result = await upsertPrice(helmetId, 'fanatics', helmet.price);
+            if (result.success) {
                 pricesAdded++;
+            } else if (pricesAdded === 0) {
+                console.log(`   ⚠️ Price error: ${result.error}`);
             }
 
         } catch (error) {

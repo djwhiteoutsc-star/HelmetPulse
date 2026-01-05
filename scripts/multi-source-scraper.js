@@ -2,6 +2,7 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
 const { createClient } = require('@supabase/supabase-js');
+const { upsertPrice } = require('./lib/price-utils');
 require('dotenv').config();
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
@@ -526,30 +527,10 @@ async function discoverAllHelmets() {
                 helmetId = existing.id;
             }
 
-            // Insert price
+            // Insert price using shared utility
             if (helmet.price > 0 && helmetId) {
-                const { error: priceError } = await supabase.from('helmet_prices').insert({
-                    helmet_id: helmetId,
-                    median_price: helmet.price,
-                    min_price: helmet.price,
-                    max_price: helmet.price,
-                    total_results: 1,
-                    source: helmet.source
-                });
-
-                if (priceError) {
-                    // If source column doesn't exist, try without it
-                    if (priceError.message.includes('source')) {
-                        await supabase.from('helmet_prices').insert({
-                            helmet_id: helmetId,
-                            median_price: helmet.price,
-                            min_price: helmet.price,
-                            max_price: helmet.price,
-                            total_results: 1
-                        });
-                    }
-                }
-                pricesAdded++;
+                const result = await upsertPrice(helmetId, helmet.source, helmet.price);
+                if (result.success) pricesAdded++;
             }
 
         } catch (err) {

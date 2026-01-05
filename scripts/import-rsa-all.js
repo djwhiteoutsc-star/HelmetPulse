@@ -12,6 +12,7 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
+const { upsertPrice } = require('./lib/price-utils');
 require('dotenv').config();
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
@@ -540,25 +541,12 @@ async function main() {
             } else {
                 added += inserted.length;
 
-                // Add prices for new helmets
-                const priceInserts = [];
-                inserted.forEach((h, idx) => {
+                // Add prices for new helmets using shared utility
+                for (let idx = 0; idx < inserted.length; idx++) {
                     if (batch[idx].price) {
-                        priceInserts.push({
-                            helmet_id: h.id,
-                            source: 'rsa',
-                            median_price: batch[idx].price,
-                            min_price: batch[idx].price,
-                            max_price: batch[idx].price,
-                            total_results: 1,
-                            scraped_at: new Date().toISOString()
-                        });
+                        const result = await upsertPrice(inserted[idx].id, 'rsa', batch[idx].price);
+                        if (result.success) pricesUpdated++;
                     }
-                });
-
-                if (priceInserts.length > 0) {
-                    await supabase.from('helmet_prices').insert(priceInserts);
-                    pricesUpdated += priceInserts.length;
                 }
 
                 process.stdout.write(`   ✓ Added ${added}/${newHelmets.length}\r`);
@@ -567,7 +555,7 @@ async function main() {
         console.log(`\n   ✓ Added ${added} new helmets`);
     }
 
-    // Update prices for existing helmets
+    // Update prices for existing helmets using shared utility
     if (priceUpdates.length > 0) {
         console.log('\n💰 Updating prices for existing helmets...');
 
@@ -575,35 +563,8 @@ async function main() {
             const batch = priceUpdates.slice(i, i + BATCH_SIZE);
 
             for (const update of batch) {
-                const { data: existing } = await supabase
-                    .from('helmet_prices')
-                    .select('id')
-                    .eq('helmet_id', update.helmet_id)
-                    .eq('source', 'rsa')
-                    .limit(1);
-
-                if (existing && existing.length > 0) {
-                    await supabase
-                        .from('helmet_prices')
-                        .update({
-                            median_price: update.price,
-                            min_price: update.price,
-                            max_price: update.price,
-                            scraped_at: new Date().toISOString()
-                        })
-                        .eq('id', existing[0].id);
-                } else {
-                    await supabase.from('helmet_prices').insert({
-                        helmet_id: update.helmet_id,
-                        source: 'rsa',
-                        median_price: update.price,
-                        min_price: update.price,
-                        max_price: update.price,
-                        total_results: 1,
-                        scraped_at: new Date().toISOString()
-                    });
-                }
-                pricesUpdated++;
+                const result = await upsertPrice(update.helmet_id, 'rsa', update.price);
+                if (result.success) pricesUpdated++;
             }
             process.stdout.write(`   ✓ Updated ${Math.min(i + BATCH_SIZE, priceUpdates.length)}/${priceUpdates.length}\r`);
         }

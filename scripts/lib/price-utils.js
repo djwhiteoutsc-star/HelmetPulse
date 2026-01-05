@@ -11,7 +11,7 @@ require('dotenv').config();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 // Valid price sources
-const VALID_SOURCES = ['ebay', 'fanatics', 'rsa', 'radtke', 'pristine', 'signaturesports', 'greatsports'];
+const VALID_SOURCES = ['ebay', 'fanatics', 'rsa', 'radtke', 'pristine', 'signaturesports', 'greatsports', 'denverautographs'];
 
 // helmet_prices table schema (correct column names)
 const PRICE_SCHEMA = {
@@ -36,11 +36,24 @@ function validateSource(source) {
 }
 
 /**
+ * Calculate median of an array of numbers
+ */
+function calculateMedian(numbers) {
+    if (!numbers || numbers.length === 0) return 0;
+    const sorted = [...numbers].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
  * Add or update a price for a helmet
  *
+ * Each source stores its OWN actual price. The cross-source median
+ * is calculated at display time, not storage time.
+ *
  * @param {number} helmetId - The helmet ID
- * @param {string} source - Price source (ebay, fanatics, rsa, radtke, pristine)
- * @param {number} price - The price value
+ * @param {string} source - Price source (ebay, fanatics, rsa, radtke, pristine, etc.)
+ * @param {number} price - The price value from this source
  * @param {object} options - Optional: { minPrice, maxPrice, totalResults, ebayUrl }
  * @returns {object} - { success: boolean, action: 'inserted'|'updated', error?: string }
  */
@@ -56,20 +69,23 @@ async function upsertPrice(helmetId, source, price, options = {}) {
             return { success: false, error: 'Invalid price value' };
         }
 
+        const ebayUrl = options.ebayUrl || null;
+
+        // Use provided min/max or default to the price itself
         const minPrice = options.minPrice || price;
         const maxPrice = options.maxPrice || price;
         const totalResults = options.totalResults || 1;
-        const ebayUrl = options.ebayUrl || null;
 
-        // Check if price already exists for this helmet + source
+        // Check if record exists for this helmet + source
         const { data: existing } = await supabase
             .from('helmet_prices')
             .select('id')
             .eq('helmet_id', helmetId)
-            .eq('source', source);
+            .eq('source', source)
+            .single();
 
-        if (existing && existing.length > 0) {
-            // Update existing
+        if (existing) {
+            // Update existing record with THIS source's actual price
             const { error } = await supabase
                 .from('helmet_prices')
                 .update({
@@ -80,12 +96,12 @@ async function upsertPrice(helmetId, source, price, options = {}) {
                     ebay_url: ebayUrl,
                     scraped_at: new Date().toISOString()
                 })
-                .eq('id', existing[0].id);
+                .eq('id', existing.id);
 
             if (error) return { success: false, error: error.message };
-            return { success: true, action: 'updated' };
+            return { success: true, action: 'updated', price };
         } else {
-            // Insert new
+            // Insert new record with THIS source's actual price
             const { error } = await supabase
                 .from('helmet_prices')
                 .insert({
@@ -100,7 +116,7 @@ async function upsertPrice(helmetId, source, price, options = {}) {
                 });
 
             if (error) return { success: false, error: error.message };
-            return { success: true, action: 'inserted' };
+            return { success: true, action: 'inserted', price };
         }
     } catch (err) {
         return { success: false, error: err.message };

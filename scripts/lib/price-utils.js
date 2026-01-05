@@ -48,8 +48,8 @@ function calculateMedian(numbers) {
 /**
  * Add or update a price for a helmet
  *
- * Each source stores its OWN actual price. The cross-source median
- * is calculated at display time, not storage time.
+ * Each source stores its OWN actual price. After storing, this function
+ * recalculates the cross-source median and stores it directly on the helmet.
  *
  * @param {number} helmetId - The helmet ID
  * @param {string} source - Price source (ebay, fanatics, rsa, radtke, pristine, etc.)
@@ -84,6 +84,7 @@ async function upsertPrice(helmetId, source, price, options = {}) {
             .eq('source', source)
             .single();
 
+        let action;
         if (existing) {
             // Update existing record with THIS source's actual price
             const { error } = await supabase
@@ -99,7 +100,7 @@ async function upsertPrice(helmetId, source, price, options = {}) {
                 .eq('id', existing.id);
 
             if (error) return { success: false, error: error.message };
-            return { success: true, action: 'updated', price };
+            action = 'updated';
         } else {
             // Insert new record with THIS source's actual price
             const { error } = await supabase
@@ -116,10 +117,47 @@ async function upsertPrice(helmetId, source, price, options = {}) {
                 });
 
             if (error) return { success: false, error: error.message };
-            return { success: true, action: 'inserted', price };
+            action = 'inserted';
         }
+
+        // Recalculate and update the helmet's current_price with the cross-source median
+        await updateHelmetMedianPrice(helmetId);
+
+        return { success: true, action, price };
     } catch (err) {
         return { success: false, error: err.message };
+    }
+}
+
+/**
+ * Recalculate the median price across all sources for a helmet
+ * and update the helmet's current_price column
+ *
+ * @param {number} helmetId - The helmet ID
+ */
+async function updateHelmetMedianPrice(helmetId) {
+    try {
+        // Get all prices for this helmet
+        const { data: prices } = await supabase
+            .from('helmet_prices')
+            .select('median_price')
+            .eq('helmet_id', helmetId);
+
+        if (!prices || prices.length === 0) return;
+
+        // Calculate median of all source prices
+        const priceValues = prices.map(p => p.median_price).filter(p => p !== null && p > 0);
+        const medianPrice = calculateMedian(priceValues);
+
+        if (medianPrice !== null) {
+            // Update the helmet's current_price
+            await supabase
+                .from('helmets')
+                .update({ current_price: medianPrice })
+                .eq('id', helmetId);
+        }
+    } catch (err) {
+        console.error(`Failed to update helmet ${helmetId} median price:`, err.message);
     }
 }
 
@@ -421,8 +459,10 @@ module.exports = {
     PRICE_SCHEMA,
     validateSource,
     upsertPrice,
+    updateHelmetMedianPrice,
     findHelmet,
     getPriceStats,
     validateSchema,
-    extractTeamFromName
+    extractTeamFromName,
+    calculateMedian
 };

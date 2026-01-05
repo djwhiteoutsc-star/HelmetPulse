@@ -23,7 +23,8 @@
     "migrate": "node scripts/run-migration.js",
     "db:check": "node scripts/check-database-consistency.js",
     "db:fix": "node scripts/fix-database-issues.js",
-    "cleanup:duplicates": "node scripts/cleanup-duplicates-paginated.js"
+    "cleanup:duplicates": "node scripts/cleanup-duplicates-paginated.js",
+    "migrate:current-price": "node scripts/migrations/add-current-price.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",

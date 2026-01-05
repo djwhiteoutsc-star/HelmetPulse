@@ -911,10 +911,10 @@ app.get('/api/helmets/suggestions', async (req, res) => {
             return res.status(500).json({ error: 'Database not configured' });
         }
 
-        // Search helmets by player name primarily (case-insensitive partial match) - fetch more to allow grouping
+        // Search helmets by player name - now includes current_price directly
         const { data: helmets, error } = await supabase
             .from('helmets')
-            .select('id, name, player, team, helmet_type, design_type')
+            .select('id, name, player, team, helmet_type, design_type, current_price')
             .or(`player.ilike.%${query}%,name.ilike.%${query}%`)
             .order('player')
             .limit(50);
@@ -942,49 +942,28 @@ app.get('/api/helmets/suggestions', async (req, res) => {
                     player: h.player,
                     team: h.team,
                     helmetType: h.helmet_type,
-                    designType: h.design_type
+                    designType: h.design_type,
+                    prices: h.current_price ? [h.current_price] : []
                 });
             } else {
                 groupedMap.get(key).ids.push(h.id);
-            }
-        }
-
-        // Fetch prices for all helmet IDs and calculate median per group
-        const allIds = helmets.map(h => h.id);
-        const { data: prices } = await supabase
-            .from('helmet_prices')
-            .select('helmet_id, median_price')
-            .in('helmet_id', allIds);
-
-        // Map prices by helmet_id
-        const pricesByHelmetId = new Map();
-        if (prices) {
-            for (const p of prices) {
-                if (!pricesByHelmetId.has(p.helmet_id)) {
-                    pricesByHelmetId.set(p.helmet_id, []);
+                if (h.current_price) {
+                    groupedMap.get(key).prices.push(h.current_price);
                 }
-                pricesByHelmetId.get(p.helmet_id).push(p.median_price);
             }
         }
 
-        // Calculate median price for each group
+        // Build suggestions using stored current_price (no extra queries needed)
         const suggestions = [];
         for (const [key, group] of groupedMap) {
-            // Collect all prices for this group's helmet IDs
-            const groupPrices = [];
-            for (const id of group.ids) {
-                const helmetPrices = pricesByHelmetId.get(id) || [];
-                groupPrices.push(...helmetPrices);
-            }
-
-            // Calculate median
+            // Calculate median of group prices (if multiple helmets in group)
             let medianPrice = null;
-            if (groupPrices.length > 0) {
-                groupPrices.sort((a, b) => a - b);
-                const mid = Math.floor(groupPrices.length / 2);
-                medianPrice = groupPrices.length % 2 === 0
-                    ? (groupPrices[mid - 1] + groupPrices[mid]) / 2
-                    : groupPrices[mid];
+            if (group.prices.length > 0) {
+                group.prices.sort((a, b) => a - b);
+                const mid = Math.floor(group.prices.length / 2);
+                medianPrice = group.prices.length % 2 === 0
+                    ? (group.prices[mid - 1] + group.prices[mid]) / 2
+                    : group.prices[mid];
             }
 
             suggestions.push({
@@ -996,7 +975,7 @@ app.get('/api/helmets/suggestions', async (req, res) => {
                 helmetType: group.helmetType,
                 designType: group.designType,
                 medianPrice: medianPrice,
-                priceCount: groupPrices.length
+                priceCount: group.prices.length
             });
         }
 
@@ -1019,10 +998,10 @@ app.get('/api/helmets/:id/prices', async (req, res) => {
             return res.status(500).json({ error: 'Database not configured' });
         }
 
-        // Get the helmet info
+        // Get the helmet info with current_price directly
         const { data: helmet, error: helmetError } = await supabase
             .from('helmets')
-            .select('id, name, player, team, helmet_type')
+            .select('id, name, player, team, helmet_type, current_price')
             .eq('id', helmetId)
             .single();
 
@@ -1030,20 +1009,8 @@ app.get('/api/helmets/:id/prices', async (req, res) => {
             return res.status(404).json({ error: 'Helmet not found' });
         }
 
-        // Get the latest price for this helmet
-        const { data: prices, error: priceError } = await supabase
-            .from('helmet_prices')
-            .select('median_price, min_price, max_price, total_results, source, scraped_at')
-            .eq('helmet_id', helmetId)
-            .order('scraped_at', { ascending: false })
-            .limit(5);
-
-        if (priceError) {
-            console.error('Price fetch error:', priceError);
-            return res.status(500).json({ error: 'Failed to fetch prices' });
-        }
-
-        if (!prices || prices.length === 0) {
+        // Return the stored median price directly
+        if (!helmet.current_price) {
             return res.json({
                 helmet,
                 medianPrice: null,
@@ -1055,31 +1022,14 @@ app.get('/api/helmets/:id/prices', async (req, res) => {
             });
         }
 
-        // Calculate median price across all retailers
-        const allPrices = prices.map(p => p.median_price).filter(p => p !== null && p > 0);
-        let medianPrice = null;
-
-        if (allPrices.length > 0) {
-            allPrices.sort((a, b) => a - b);
-            const mid = Math.floor(allPrices.length / 2);
-            medianPrice = allPrices.length % 2 === 0
-                ? (allPrices[mid - 1] + allPrices[mid]) / 2
-                : allPrices[mid];
-        }
-
-        // Get min and max across all sources
-        const allMinPrices = prices.map(p => p.min_price).filter(p => p !== null && p > 0);
-        const allMaxPrices = prices.map(p => p.max_price).filter(p => p !== null && p > 0);
-
         res.json({
             helmet,
-            medianPrice: medianPrice,
-            minPrice: allMinPrices.length > 0 ? Math.min(...allMinPrices) : null,
-            maxPrice: allMaxPrices.length > 0 ? Math.max(...allMaxPrices) : null,
-            totalResults: prices.reduce((sum, p) => sum + (p.total_results || 0), 0),
-            source: prices.length > 1 ? `${prices.length} retailers` : (prices[0]?.source || 'database'),
-            priceCount: allPrices.length,
-            priceHistory: prices
+            medianPrice: helmet.current_price,
+            minPrice: null,
+            maxPrice: null,
+            totalResults: 1,
+            source: 'database',
+            priceCount: 1
         });
     } catch (error) {
         console.error('Helmet prices error:', error);
@@ -1100,19 +1050,23 @@ app.post('/api/helmets/grouped-prices', async (req, res) => {
             return res.status(500).json({ error: 'Database not configured' });
         }
 
-        // Get all prices for these helmet IDs
-        const { data: prices, error: priceError } = await supabase
-            .from('helmet_prices')
-            .select('helmet_id, median_price, min_price, max_price, total_results, source, scraped_at')
-            .in('helmet_id', ids)
-            .order('scraped_at', { ascending: false });
+        // Get current_price directly from helmets table
+        const { data: helmets, error: helmetError } = await supabase
+            .from('helmets')
+            .select('id, current_price')
+            .in('id', ids);
 
-        if (priceError) {
-            console.error('Price fetch error:', priceError);
-            return res.status(500).json({ error: 'Failed to fetch prices' });
+        if (helmetError) {
+            console.error('Helmet fetch error:', helmetError);
+            return res.status(500).json({ error: 'Failed to fetch helmets' });
         }
 
-        if (!prices || prices.length === 0) {
+        // Collect all prices and calculate median
+        const allPrices = (helmets || [])
+            .map(h => h.current_price)
+            .filter(p => p !== null && p > 0);
+
+        if (allPrices.length === 0) {
             return res.json({
                 medianPrice: null,
                 minPrice: null,
@@ -1123,27 +1077,20 @@ app.post('/api/helmets/grouped-prices', async (req, res) => {
             });
         }
 
-        // Collect all median prices and calculate overall median
-        const allMedianPrices = prices.map(p => p.median_price).filter(p => p !== null);
-        const allMinPrices = prices.map(p => p.min_price).filter(p => p !== null);
-        const allMaxPrices = prices.map(p => p.max_price).filter(p => p !== null);
-
-        let medianPrice = null;
-        if (allMedianPrices.length > 0) {
-            allMedianPrices.sort((a, b) => a - b);
-            const mid = Math.floor(allMedianPrices.length / 2);
-            medianPrice = allMedianPrices.length % 2 === 0
-                ? (allMedianPrices[mid - 1] + allMedianPrices[mid]) / 2
-                : allMedianPrices[mid];
-        }
+        // Calculate median of all helmet prices
+        allPrices.sort((a, b) => a - b);
+        const mid = Math.floor(allPrices.length / 2);
+        const medianPrice = allPrices.length % 2 === 0
+            ? (allPrices[mid - 1] + allPrices[mid]) / 2
+            : allPrices[mid];
 
         res.json({
             medianPrice,
-            minPrice: allMinPrices.length > 0 ? Math.min(...allMinPrices) : null,
-            maxPrice: allMaxPrices.length > 0 ? Math.max(...allMaxPrices) : null,
-            totalResults: prices.reduce((sum, p) => sum + (p.total_results || 0), 0),
+            minPrice: null,
+            maxPrice: null,
+            totalResults: allPrices.length,
             source: 'database',
-            priceCount: allMedianPrices.length
+            priceCount: allPrices.length
         });
     } catch (error) {
         console.error('Grouped prices error:', error);

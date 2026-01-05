@@ -27,9 +27,9 @@ async function countHelmets() {
             const type = helmet.helmet_type?.toLowerCase();
             if (type === 'mini') {
                 counts.mini++;
-            } else if (type === 'authentic') {
+            } else if (type === 'authentic' || type === 'fullsize-authentic') {
                 counts.authentic++;
-            } else if (type === 'replica') {
+            } else if (type === 'replica' || type === 'fullsize-replica') {
                 counts.replica++;
             } else {
                 counts.other++;

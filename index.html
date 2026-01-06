@@ -3661,11 +3661,13 @@
             // Show welcome message for guests with no watchlist
             if (!currentUser && watchlist.length === 0) {
                 el.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🏈</div><h3>Welcome to HelmetPulse!</h3><p>Search for any signed helmet above to see live prices.<br>Try it now - no account required!</p></div>';
+                updateDashboard();
                 return;
             }
 
             if (watchlist.length === 0) {
                 el.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🏈</div><h3>No helmets yet</h3><p>Add your first helmet above to start tracking</p></div>';
+                updateDashboard();
                 return;
             }
 

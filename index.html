@@ -3619,7 +3619,8 @@
             let totalValue = 0, totalCost = 0;
             watchlist.forEach(card => {
                 if (card.currentPrice) totalValue += card.currentPrice;
-                if (card.costBasis) totalCost += card.costBasis;
+                // Handle zero and negative costs properly
+                if (card.costBasis !== null && card.costBasis !== undefined) totalCost += card.costBasis;
             });
 
             const profit = totalValue - totalCost;
@@ -3627,7 +3628,7 @@
 
             // Desktop stats
             document.getElementById('totalValue').textContent = '$' + totalValue.toFixed(2);
-            document.getElementById('totalCost').textContent = '$' + totalCost.toFixed(2);
+            document.getElementById('totalCost').textContent = (totalCost >= 0 ? '$' : '-$') + Math.abs(totalCost).toFixed(2);
             document.getElementById('totalProfit').textContent = (profit >= 0 ? '+$' : '-$') + Math.abs(profit).toFixed(2);
             document.getElementById('totalProfit').classList.remove('positive-profit', 'negative-profit');
             document.getElementById('totalProfit').classList.add(profit >= 0 ? 'positive-profit' : 'negative-profit');
@@ -3635,7 +3636,7 @@
 
             // Mobile stats
             document.getElementById('mobilePortfolioValue').textContent = '$' + totalValue.toFixed(2);
-            document.getElementById('mobileTotalCost').textContent = '$' + totalCost.toFixed(2);
+            document.getElementById('mobileTotalCost').textContent = (totalCost >= 0 ? '$' : '-$') + Math.abs(totalCost).toFixed(2);
             document.getElementById('mobileTotalProfit').textContent = (profit >= 0 ? '+$' : '-$') + Math.abs(profit).toFixed(2);
             document.getElementById('mobileTotalProfit').classList.remove('positive-profit', 'negative-profit');
             document.getElementById('mobileTotalProfit').classList.add(profit >= 0 ? 'positive-profit' : 'negative-profit');
@@ -3821,7 +3822,9 @@
         }
 
         function updateCostBasis(index, value) {
-            watchlist[index].costBasis = parseFloat(value) || null;
+            const parsed = parseFloat(value);
+            // Allow negative values and zero - only set null if truly empty/NaN
+            watchlist[index].costBasis = (!isNaN(parsed)) ? parsed : null;
             saveWatchlist();
             renderWatchlist();
         }

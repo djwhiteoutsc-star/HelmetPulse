@@ -10,8 +10,8 @@ require('dotenv').config();
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-// Valid price sources
-const VALID_SOURCES = ['ebay', 'fanatics', 'rsa', 'radtke', 'pristine', 'signaturesports', 'greatsports', 'denverautographs'];
+// Valid price sources (retailer inventory only)
+const VALID_SOURCES = ['fanatics', 'rsa', 'radtke', 'pristine', 'signaturesports', 'greatsports', 'denverautographs'];
 
 // helmet_prices table schema (correct column names)
 const PRICE_SCHEMA = {

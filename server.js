@@ -6,36 +6,27 @@
  * - JWT token management
  * - Access logging
  * - Persistent watchlist storage
- * - eBay API for sold price data
- * - Firecrawl API fallback for eBay scraping
+ * - Helmet price data from retailer imports
  */
 
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const cheerio = require('cheerio');
 const rateLimit = require('express-rate-limit');
-const NodeCache = require('node-cache');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
-const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
+const Stripe = require('stripe');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ============================================
-// 🔑 API KEYS - Set via environment variables
-// ============================================
-const FIRECRAWL_API_KEY = process.env.FIRECRAWL_API_KEY;
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-
-// eBay API Credentials (Production for real data)
-const EBAY_APP_ID = process.env.EBAY_APP_ID;
-const EBAY_CERT_ID = process.env.EBAY_CERT_ID;
-const EBAY_ENVIRONMENT = 'PRODUCTION'; // PRODUCTION for real sold prices (5K calls/day)
+// Stripe Configuration
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
+const stripe = STRIPE_SECRET_KEY ? Stripe(STRIPE_SECRET_KEY) : null;
 
 // Email Configuration (Resend or SMTP)
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -59,9 +50,6 @@ if (!process.env.JWT_SECRET) {
 if (!process.env.PASSWORD_SALT) {
     console.warn('⚠️  WARNING: PASSWORD_SALT not set - using random value (legacy passwords may break)');
 }
-
-// Initialize Anthropic client
-const anthropic = ANTHROPIC_API_KEY ? new Anthropic({ apiKey: ANTHROPIC_API_KEY }) : null;
 
 // Initialize email (Resend API or Nodemailer SMTP)
 let emailTransporter = null;
@@ -89,32 +77,6 @@ if (RESEND_API_KEY) {
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const supabase = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
-
-// eBay OAuth token cache
-let ebayAccessToken = null;
-let ebayTokenExpiry = 0;
-
-// Auth is now handled by Supabase (migrated from Airtable)
-
-// Cache for price lookups (24 hours to reduce API calls)
-const cache = new NodeCache({ stdTTL: 86400 }); // 24 hours = 86400 seconds
-
-// eBay API rate limiting (prevent burst limit violations)
-let lastEbayApiCall = 0;
-const EBAY_API_MIN_DELAY = 600; // Minimum 600ms between calls (max ~1.6 calls/second, safe buffer)
-
-async function throttleEbayApi() {
-    const now = Date.now();
-    const timeSinceLastCall = now - lastEbayApiCall;
-
-    if (timeSinceLastCall < EBAY_API_MIN_DELAY) {
-        const delay = EBAY_API_MIN_DELAY - timeSinceLastCall;
-        console.log(`⏱️ Throttling eBay API call (waiting ${delay}ms to avoid rate limit)...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-    }
-
-    lastEbayApiCall = Date.now();
-}
 
 // Middleware
 app.set('trust proxy', 1); // Trust first proxy (Render's load balancer)
@@ -469,6 +431,126 @@ async function verifyCaptcha(token) {
         return false;
     }
 }
+
+// ============================================
+// STRIPE ENDPOINTS
+// ============================================
+
+// Create Stripe checkout session for additional slots
+app.post('/api/stripe/create-checkout', authenticateToken, async (req, res) => {
+    try {
+        if (!stripe) {
+            return res.status(500).json({ error: 'Stripe not configured' });
+        }
+
+        const { quantity = 1 } = req.body; // Number of 5-slot bundles to purchase
+        const userId = req.user.id;
+
+        // Create Stripe checkout session
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [{
+                price_data: {
+                    currency: 'usd',
+                    product_data: {
+                        name: 'Additional Helmet Slots',
+                        description: `+${quantity * 5} helmet tracking slots`,
+                    },
+                    unit_amount: 199, // $1.99 in cents
+                },
+                quantity: quantity,
+            }],
+            mode: 'payment',
+            success_url: `${req.headers.origin || 'http://localhost:3000'}/?checkout=success`,
+            cancel_url: `${req.headers.origin || 'http://localhost:3000'}/?checkout=cancelled`,
+            client_reference_id: userId.toString(),
+            metadata: {
+                user_id: userId.toString(),
+                slots_purchased: (quantity * 5).toString()
+            }
+        });
+
+        res.json({ sessionId: session.id, url: session.url });
+    } catch (error) {
+        console.error('Stripe checkout error:', error);
+        res.status(500).json({ error: 'Failed to create checkout session' });
+    }
+});
+
+// Stripe webhook handler
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    if (!stripe || !STRIPE_WEBHOOK_SECRET) {
+        return res.status(400).send('Stripe not configured');
+    }
+
+    const sig = req.headers['stripe-signature'];
+
+    try {
+        const event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
+
+        // Handle successful payment
+        if (event.type === 'checkout.session.completed') {
+            const session = event.data.object;
+            const userId = parseInt(session.metadata.user_id);
+            const slotsPurchased = parseInt(session.metadata.slots_purchased);
+
+            console.log(`✓ Payment successful for user ${userId}: +${slotsPurchased} slots`);
+
+            // Get current slots and increment
+            const { data: currentUser } = await supabase
+                .from('auth_users')
+                .select('purchased_slots')
+                .eq('id', userId)
+                .single();
+
+            const currentSlots = currentUser?.purchased_slots || 0;
+            const newSlots = currentSlots + slotsPurchased;
+
+            // Update user's purchased slots in database
+            const { error } = await supabase
+                .from('auth_users')
+                .update({ purchased_slots: newSlots })
+                .eq('id', userId);
+
+            if (error) {
+                console.error('Failed to update purchased slots:', error);
+                // Still return 200 to acknowledge webhook
+            } else {
+                console.log(`✓ User ${userId} now has ${newSlots} purchased slots (total: ${10 + newSlots})`);
+            }
+        }
+
+        res.json({ received: true });
+    } catch (err) {
+        console.error('Webhook error:', err.message);
+        res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+});
+
+// Get user's slot information
+app.get('/api/user/slots', authenticateToken, async (req, res) => {
+    try {
+        const { data: user, error } = await supabase
+            .from('auth_users')
+            .select('purchased_slots')
+            .eq('id', req.user.id)
+            .single();
+
+        if (error) throw error;
+
+        const purchasedSlots = user.purchased_slots || 0;
+        const totalSlots = 10 + purchasedSlots; // Base 10 + purchased
+
+        res.json({
+            baseSlots: 10,
+            purchasedSlots,
+            totalSlots
+        });
+    } catch (error) {
+        console.error('Get slots error:', error);
+        res.status(500).json({ error: 'Failed to get slot information' });
+    }
+});
 
 // ============================================
 // AUTH ENDPOINTS
@@ -1099,499 +1181,15 @@ app.post('/api/helmets/grouped-prices', async (req, res) => {
 });
 
 // ============================================
-// HAIKU QUERY OPTIMIZER
+// HEALTH CHECK
 // ============================================
-
-async function optimizeQueryWithHaiku(rawQuery) {
-    // Simple string normalization - no LLM, no hallucinations, no cost
-    console.log(`🔧 Normalizing query: "${rawQuery}"`);
-
-    let optimizedQuery = rawQuery;
-
-    // Fix common year formats: 23/24 → 2023-24, 24/25 → 2024-25
-    optimizedQuery = optimizedQuery.replace(/\b(\d{2})\/(\d{2})\b/g, (match, y1, y2) => {
-        const year1 = parseInt(y1) < 50 ? `20${y1}` : `19${y1}`;
-        const year2 = parseInt(y2) < 50 ? `20${y2}` : `19${y2}`;
-        return `${year1}-${year2}`;
-    });
-
-    // Remove serial numbers like /25, /99, /10, /999 (they don't search well on eBay)
-    optimizedQuery = optimizedQuery.replace(/\s*\/\d{1,4}\b/g, '');
-
-    // Clean up extra spaces
-    optimizedQuery = optimizedQuery.replace(/\s+/g, ' ').trim();
-
-    const wasOptimized = optimizedQuery !== rawQuery;
-
-    if (wasOptimized) {
-        console.log(`✓ Normalized: "${rawQuery}" → "${optimizedQuery}"`);
-    } else {
-        console.log(`✓ No changes needed: "${rawQuery}"`);
-    }
-
-    return {
-        optimizedQuery,
-        originalQuery: rawQuery,
-        wasOptimized
-    };
-}
-
-// ============================================
-// EBAY API INTEGRATION
-// ============================================
-
-async function getEbayAccessToken() {
-    // Return cached token if still valid
-    if (ebayAccessToken && Date.now() < ebayTokenExpiry) {
-        return ebayAccessToken;
-    }
-
-    console.log('🔑 Getting new eBay access token...');
-
-    const credentials = Buffer.from(`${EBAY_APP_ID}:${EBAY_CERT_ID}`).toString('base64');
-    const tokenUrl = EBAY_ENVIRONMENT === 'PRODUCTION'
-        ? 'https://api.ebay.com/identity/v1/oauth2/token'
-        : 'https://api.sandbox.ebay.com/identity/v1/oauth2/token';
-
-    try {
-        const response = await fetch(tokenUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': `Basic ${credentials}`
-            },
-            body: 'grant_type=client_credentials&scope=https://api.ebay.com/oauth/api_scope'
-        });
-
-        if (!response.ok) {
-            const error = await response.text();
-            console.error('eBay OAuth error:', error);
-            throw new Error(`eBay OAuth failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-        ebayAccessToken = data.access_token;
-        ebayTokenExpiry = Date.now() + (data.expires_in * 1000) - 60000; // Refresh 1 min early
-
-        console.log('✓ eBay access token obtained');
-        return ebayAccessToken;
-    } catch (error) {
-        console.error('eBay OAuth error:', error);
-        throw error;
-    }
-}
-
-async function searchEbayWithAPI(query, category, retryCount = 0) {
-    const MAX_RETRIES = 3;
-
-    // Use Finding API for sold listings (Browse API only returns active listings)
-    // Finding API doesn't require OAuth, just the App ID
-    const apiUrl = EBAY_ENVIRONMENT === 'PRODUCTION'
-        ? 'https://svcs.ebay.com/services/search/FindingService/v1'
-        : 'https://svcs.sandbox.ebay.com/services/search/FindingService/v1';
-
-    // Category mapping
-    const categoryMap = {
-        'sports': '212',
-        'pokemon': '183454',
-        'mtg': '19107',
-        'yugioh': '183453'
-    };
-
-    // Build Finding API XML request
-    const params = new URLSearchParams({
-        'OPERATION-NAME': 'findCompletedItems',
-        'SERVICE-VERSION': '1.0.0',
-        'SECURITY-APPNAME': EBAY_APP_ID,
-        'RESPONSE-DATA-FORMAT': 'JSON',
-        'REST-PAYLOAD': '',
-        'keywords': query,
-        'paginationInput.entriesPerPage': '100',
-        'sortOrder': 'EndTimeSoonest'
-    });
-
-    // Add category filter
-    if (category && categoryMap[category]) {
-        params.append('categoryId', categoryMap[category]);
-    }
-
-    // Add sold items filter
-    params.append('itemFilter(0).name', 'SoldItemsOnly');
-    params.append('itemFilter(0).value', 'true');
-
-    console.log(`📡 eBay Finding API search: "${query}"`);
-    console.log(`   URL: ${apiUrl}?${params.toString().substring(0, 200)}...`);
-
-    try {
-        // Throttle API calls to prevent burst rate limit
-        await throttleEbayApi();
-
-        const response = await fetch(`${apiUrl}?${params.toString()}`);
-
-        if (!response.ok) {
-            // Handle rate limit errors with retry
-            if ((response.status === 429 || response.status === 500) && retryCount < MAX_RETRIES) {
-                const backoffDelay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
-                console.log(`⚠️ Rate limit hit (${response.status}), retrying in ${backoffDelay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
-                await new Promise(resolve => setTimeout(resolve, backoffDelay));
-                return searchEbayWithAPI(query, category, retryCount + 1);
-            }
-
-            const error = await response.text();
-            console.error('eBay Finding API error:', response.status, error);
-            throw new Error(`eBay Finding API error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log(`   API Response received, parsing...`);
-
-        const searchResult = data.findCompletedItemsResponse?.[0];
-
-        if (!searchResult || searchResult.ack?.[0] !== 'Success') {
-            console.log('⚠️ No results from eBay Finding API');
-            return {
-                query,
-                totalResults: 0,
-                averagePrice: null,
-                medianPrice: null,
-                minPrice: null,
-                maxPrice: null,
-                listings: [],
-                fetchedAt: new Date().toISOString(),
-                ebayUrl: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}&LH_Sold=1&LH_Complete=1`
-            };
-        }
-
-        const items = searchResult.searchResult?.[0]?.item || [];
-
-        if (items.length === 0) {
-            console.log('⚠️ No completed items found');
-            return {
-                query,
-                totalResults: 0,
-                averagePrice: null,
-                medianPrice: null,
-                minPrice: null,
-                maxPrice: null,
-                listings: [],
-                fetchedAt: new Date().toISOString(),
-                ebayUrl: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}&LH_Sold=1&LH_Complete=1`
-            };
-        }
-
-        // Parse listings - only items that actually SOLD (not just ended)
-        const listings = items
-            .filter(item => {
-                const sellingState = item.sellingStatus?.[0];
-                const sold = sellingState?.sellingState?.[0] === 'EndedWithSales';
-                const price = parseFloat(sellingState?.currentPrice?.[0]?.__value__ || 0);
-                return sold && price > 0;
-            })
-            .map(item => ({
-                title: item.title?.[0] || 'Unknown',
-                price: parseFloat(item.sellingStatus?.[0]?.currentPrice?.[0]?.__value__ || 0)
-            }))
-            .filter(l => l.price >= 0.25 && l.price <= 5000);
-
-        console.log(`✓ Found ${listings.length} sold eBay listings`);
-
-        if (listings.length === 0) {
-            return {
-                query,
-                totalResults: 0,
-                averagePrice: null,
-                medianPrice: null,
-                minPrice: null,
-                maxPrice: null,
-                listings: [],
-                fetchedAt: new Date().toISOString(),
-                ebayUrl: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}&LH_Sold=1&LH_Complete=1`
-            };
-        }
-
-        // Dedupe
-        const seen = new Set();
-        const uniqueListings = listings.filter(l => {
-            const key = l.price.toFixed(2);
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-        });
-
-        const filtered = removeOutliers(uniqueListings);
-        const prices = filtered.map(l => l.price);
-        const recentPrices = prices.slice(0, Math.min(3, prices.length));
-        const recentMedian = recentPrices.length > 0 ? getMedian(recentPrices) : null;
-
-        return {
-            query,
-            totalResults: filtered.length,
-            averagePrice: prices.length > 0 ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length * 100) / 100 : null,
-            medianPrice: recentMedian ? Math.round(recentMedian * 100) / 100 : null,
-            minPrice: prices.length > 0 ? Math.min(...prices) : null,
-            maxPrice: prices.length > 0 ? Math.max(...prices) : null,
-            listings: filtered.slice(0, 15),
-            fetchedAt: new Date().toISOString(),
-            ebayUrl: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}&LH_Sold=1&LH_Complete=1`
-        };
-    } catch (error) {
-        console.error('eBay Finding API search error:', error);
-        throw error;
-    }
-}
-
-// ============================================
-// PRICE ENDPOINTS
-// ============================================
-
-// Health check
 app.get('/health', (req, res) => {
     res.json({
         status: 'ok',
-        ebayApiConfigured: !!(EBAY_APP_ID && EBAY_CERT_ID),
-        firecrawlConfigured: !!FIRECRAWL_API_KEY,
         supabaseConfigured: !!supabase,
-        anthropicConfigured: !!ANTHROPIC_API_KEY,
-        queryOptimizer: !!anthropic ? 'enabled' : 'disabled',
         timestamp: new Date().toISOString()
     });
 });
-
-// Main price lookup
-app.post('/api/prices', optionalAuth, async (req, res) => {
-    try {
-        const { query, category } = req.body;
-
-        if (!query || query.length < 3) {
-            return res.status(400).json({ error: 'Query must be at least 3 characters' });
-        }
-
-        // Check cache first (before optimization to save Haiku calls too)
-        const cacheKey = `${query}-${category}`;
-        const cached = cache.get(cacheKey);
-        if (cached) {
-            console.log(`✓ Cache hit for: ${query}`);
-            return res.json(cached);
-        }
-
-        // Optimize query with Haiku
-        const { optimizedQuery, wasOptimized } = await optimizeQueryWithHaiku(query);
-
-        // Also cache by optimized query to avoid duplicate scrapes
-        const optimizedCacheKey = `${optimizedQuery}-${category}`;
-        const optimizedCached = cache.get(optimizedCacheKey);
-        if (optimizedCached) {
-            console.log(`✓ Cache hit for optimized query: ${optimizedQuery}`);
-            // Also cache under original query for next time
-            cache.set(cacheKey, optimizedCached);
-            return res.json(optimizedCached);
-        }
-
-        console.log(`→ Fetching prices for: ${optimizedQuery}${wasOptimized ? ` (optimized from: ${query})` : ''}`);
-
-        // Try eBay Production API first (5K calls/day), fallback to Firecrawl if it fails
-        let data;
-        try {
-            data = await searchEbayWithAPI(optimizedQuery, category);
-            console.log('✓ Using eBay Production API');
-        } catch (ebayError) {
-            console.log('⚠️ eBay API failed, falling back to Firecrawl:', ebayError.message);
-            data = await scrapeEbayWithFirecrawl(optimizedQuery, category);
-        }
-
-        // Add optimization info to response
-        data.originalQuery = query;
-        data.optimizedQuery = optimizedQuery;
-        data.wasOptimized = wasOptimized;
-
-        if (data.totalResults > 0) {
-            cache.set(cacheKey, data);
-            if (wasOptimized) {
-                cache.set(optimizedCacheKey, data);
-            }
-        }
-
-        res.json(data);
-    } catch (error) {
-        console.error('Error:', error.message);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// ============================================
-// SCRAPING FUNCTION
-// ============================================
-async function scrapeEbayWithFirecrawl(query, category) {
-    if (!FIRECRAWL_API_KEY) {
-        throw new Error('Firecrawl API key not configured');
-    }
-
-    const params = new URLSearchParams({
-        _nkw: query,
-        LH_Sold: '1',
-        LH_Complete: '1',
-        _sop: '13',
-        _ipg: '120',
-        rt: 'nc',
-        LH_SoldBefore: Math.floor(Date.now() / 1000), // Now
-        LH_SoldAfter: Math.floor((Date.now() - (90 * 24 * 60 * 60 * 1000)) / 1000) // 90 days ago
-    });
-
-    const categoryMap = {
-        'sports': '212',
-        'pokemon': '183454',
-        'mtg': '19107',
-        'yugioh': '183453'
-    };
-
-    if (category && categoryMap[category]) {
-        params.append('_sacat', categoryMap[category]);
-    }
-
-    const ebayUrl = `https://www.ebay.com/sch/i.html?${params.toString()}`;
-    console.log('📍 eBay URL:', ebayUrl);
-
-    const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${FIRECRAWL_API_KEY}`
-        },
-        body: JSON.stringify({
-            url: ebayUrl,
-            formats: ['markdown', 'html'],
-            waitFor: 3000,
-            timeout: 30000
-        })
-    });
-
-    if (!response.ok) {
-        const errText = await response.text();
-        console.error('Firecrawl error:', response.status, errText);
-        
-        if (response.status === 401) throw new Error('Invalid Firecrawl API key');
-        if (response.status === 402) throw new Error('Firecrawl credits exhausted');
-        throw new Error(`Firecrawl error: ${response.status}`);
-    }
-
-    const result = await response.json();
-    
-    if (!result.success) {
-        throw new Error('Failed to get page content');
-    }
-
-    const listings = [];
-
-    // Parse from Markdown first (Firecrawl returns better markdown than HTML)
-    if (result.data?.markdown) {
-        console.log(`Markdown received: ${result.data.markdown.length} chars`);
-
-        // Parse markdown for sold listings
-        // Format: "Title\n$XX.XX\nSold..." or variations
-        const lines = result.data.markdown.split('\n');
-
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-
-            // Look for price patterns
-            const priceMatch = line.match(/\$\s*([\d,]+\.?\d{0,2})/);
-            if (!priceMatch) continue;
-
-            const price = parseFloat(priceMatch[1].replace(/,/g, ''));
-            if (isNaN(price) || price < 0.25 || price > 5000) continue;
-
-            // Look for "Sold" keyword nearby (within 3 lines)
-            let hasSold = false;
-            for (let j = Math.max(0, i - 2); j < Math.min(lines.length, i + 3); j++) {
-                if (lines[j].toLowerCase().includes('sold')) {
-                    hasSold = true;
-                    break;
-                }
-            }
-
-            if (!hasSold) continue;
-
-            // Try to find title (usually a few lines before the price)
-            let title = 'eBay Listing';
-            for (let j = Math.max(0, i - 5); j < i; j++) {
-                const potentialTitle = lines[j].trim();
-                if (potentialTitle.length > 15 &&
-                    !potentialTitle.includes('$') &&
-                    !potentialTitle.toLowerCase().includes('shop on ebay') &&
-                    !potentialTitle.toLowerCase().includes('sponsored')) {
-                    title = potentialTitle.substring(0, 100);
-                    break;
-                }
-            }
-
-            console.log(`  ✓ Found listing: ${title.substring(0, 60)} - $${price}`);
-            listings.push({ title, price });
-        }
-    }
-
-    console.log(`📊 Total listings parsed from markdown: ${listings.length}`);
-
-    if (listings.length === 0) {
-        return {
-            query,
-            totalResults: 0,
-            averagePrice: null,
-            medianPrice: null,
-            minPrice: null,
-            maxPrice: null,
-            listings: [],
-            fetchedAt: new Date().toISOString(),
-            ebayUrl
-        };
-    }
-
-    // Dedupe
-    const seen = new Set();
-    const uniqueListings = listings.filter(l => {
-        const key = l.price.toFixed(2);
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-    });
-
-    console.log(`After deduplication: ${uniqueListings.length} unique listings`);
-
-    const filtered = removeOutliers(uniqueListings);
-    console.log(`After outlier removal: ${filtered.length} listings`);
-
-    const prices = filtered.map(l => l.price);
-    const recentPrices = prices.slice(0, Math.min(3, prices.length));
-    const recentMedian = recentPrices.length > 0 ? getMedian(recentPrices) : null;
-
-    console.log(`✓ Final result: ${filtered.length} listings, median: $${recentMedian}`);
-
-    return {
-        query,
-        totalResults: filtered.length,
-        averagePrice: prices.length > 0 ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length * 100) / 100 : null,
-        medianPrice: recentMedian ? Math.round(recentMedian * 100) / 100 : null,
-        minPrice: prices.length > 0 ? Math.min(...prices) : null,
-        maxPrice: prices.length > 0 ? Math.max(...prices) : null,
-        listings: filtered.slice(0, 15),
-        fetchedAt: new Date().toISOString(),
-        ebayUrl
-    };
-}
-
-function getMedian(arr) {
-    const sorted = [...arr].sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-}
-
-function removeOutliers(listings) {
-    if (listings.length < 4) return listings;
-    const prices = listings.map(l => l.price).sort((a, b) => a - b);
-    const q1 = prices[Math.floor(prices.length * 0.25)];
-    const q3 = prices[Math.floor(prices.length * 0.75)];
-    const iqr = q3 - q1;
-    return listings.filter(l => l.price >= q1 - iqr * 1.5 && l.price <= q3 + iqr * 1.5);
-}
 
 // ============================================
 // START SERVER
@@ -1603,10 +1201,7 @@ app.listen(PORT, () => {
 ╠═══════════════════════════════════════════════════════════════╣
 ║   Local:      http://localhost:${PORT}                          ║
 ║   Health:     http://localhost:${PORT}/health                   ║
-║   eBay API:   ${EBAY_APP_ID && EBAY_CERT_ID ? '✓ Production API (5K/day + 24hr cache)' : '✗ Not configured'}             ║
-║   Firecrawl:  ${FIRECRAWL_API_KEY ? '✓ Fallback ready' : '✗ Missing'}                                  ║
 ║   Supabase:   ${supabase ? '✓ Connected (Auth + Data)' : '✗ Not configured'}                       ║
-║   Anthropic:  ${ANTHROPIC_API_KEY ? '✓ Query Optimizer ON' : '✗ Query Optimizer OFF'}                            ║
 ╚═══════════════════════════════════════════════════════════════╝
     `);
 });

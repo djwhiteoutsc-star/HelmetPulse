@@ -606,6 +606,83 @@
 
         .auth-switch a:hover { text-decoration: underline; opacity: 0.8; }
 
+        /* Upgrade Modal */
+        .slot-info {
+            display: flex;
+            gap: 20px;
+            padding: 15px;
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+        }
+
+        .slot-stat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .slot-stat .label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .slot-stat .value {
+            font-family: 'Space Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .upgrade-option {
+            padding: 20px;
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .upgrade-option h3 {
+            font-size: 1.25rem;
+            margin: 0 0 8px 0;
+            color: var(--text-primary);
+        }
+
+        .upgrade-option p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin: 0 0 16px 0;
+        }
+
+        .upgrade-option .price {
+            font-family: 'Space Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 16px;
+        }
+
+        .upgrade-option .btn-primary {
+            width: 100%;
+        }
+
+        .upgrade-note {
+            padding: 12px;
+            background: rgba(240, 74, 48, 0.1);
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(240, 74, 48, 0.2);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
         /* Sync Status */
         .sync-status {
             display: flex;
@@ -2810,6 +2887,39 @@
         </div>
     </div>
 
+    <!-- Upgrade Slots Modal -->
+    <div class="modal-overlay" id="upgradeModal">
+        <div class="modal-content auth-modal">
+            <button class="modal-close" onclick="closeUpgradeModal()">&times;</button>
+            <h2>Get More Helmet Slots</h2>
+            <p class="auth-subtitle">Track even more helmets with additional slots</p>
+
+            <div class="auth-form" style="gap: 20px;">
+                <div class="slot-info">
+                    <div class="slot-stat">
+                        <span class="label">Current Slots:</span>
+                        <span class="value" id="currentSlotsDisplay">10</span>
+                    </div>
+                    <div class="slot-stat">
+                        <span class="label">Purchased:</span>
+                        <span class="value" id="purchasedSlotsDisplay">0</span>
+                    </div>
+                </div>
+
+                <div class="upgrade-option">
+                    <h3>+5 Additional Slots</h3>
+                    <p>One-time payment • Can purchase multiple times</p>
+                    <div class="price">$1.99</div>
+                    <button class="btn-primary" onclick="purchaseSlots(1)">Buy +5 Slots</button>
+                </div>
+
+                <div class="upgrade-note">
+                    Note: You can buy as many 5-slot bundles as you need. Each purchase is a one-time payment.
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
 
     <script>
@@ -2821,7 +2931,12 @@
         let authToken = localStorage.getItem('cardpulse_token');
         let authMode = 'register';
 
-        const MAX_CARDS = 7;
+        // Slot configuration
+        let userSlots = {
+            baseSlots: 10,
+            purchasedSlots: 0,
+            totalSlots: 10
+        };
         const API_URL = ''; // Empty for relative URLs - works on any host
         const MIN_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 
@@ -3162,12 +3277,36 @@
                     const data = await res.json();
                     currentUser = data.user;
                     await loadWatchlistFromServer();
+                    await fetchUserSlots(); // Load slot information
                 } else {
                     authToken = null;
                     localStorage.removeItem('cardpulse_token');
                 }
             } catch (e) {
                 console.log('Auth check failed:', e);
+            }
+        }
+
+        async function fetchUserSlots() {
+            if (!authToken || !currentUser) {
+                userSlots = { baseSlots: 10, purchasedSlots: 0, totalSlots: 10 };
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/api/user/slots`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (res.ok) {
+                    userSlots = await res.json();
+                    console.log('User slots:', userSlots);
+                } else {
+                    userSlots = { baseSlots: 10, purchasedSlots: 0, totalSlots: 10 };
+                }
+            } catch (e) {
+                console.log('Failed to fetch slots:', e);
+                userSlots = { baseSlots: 10, purchasedSlots: 0, totalSlots: 10 };
             }
         }
 
@@ -3309,6 +3448,78 @@
             updateDashboard();
             showToast('Logged out', 'success');
         }
+
+        // ============================================
+        // UPGRADE SLOTS FUNCTIONS
+        // ============================================
+        function showUpgradePrompt() {
+            if (!currentUser) return;
+
+            const modal = document.getElementById('upgradeModal');
+            document.getElementById('currentSlotsDisplay').textContent = userSlots.totalSlots;
+            document.getElementById('purchasedSlotsDisplay').textContent = userSlots.purchasedSlots;
+            modal.classList.add('open');
+        }
+
+        function closeUpgradeModal() {
+            document.getElementById('upgradeModal').classList.remove('open');
+        }
+
+        async function purchaseSlots(quantity = 1) {
+            if (!authToken || !currentUser) {
+                showToast('Please log in to purchase slots', 'error');
+                return;
+            }
+
+            try {
+                const button = event.target;
+                button.disabled = true;
+                button.textContent = 'Processing...';
+
+                const res = await fetch(`${API_URL}/api/stripe/create-checkout`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ quantity })
+                });
+
+                if (!res.ok) {
+                    throw new Error('Failed to create checkout session');
+                }
+
+                const { url } = await res.json();
+
+                // Redirect to Stripe Checkout
+                window.location.href = url;
+            } catch (error) {
+                console.error('Purchase error:', error);
+                showToast('Failed to start checkout', 'error');
+                const button = event.target;
+                button.disabled = false;
+                button.textContent = 'Buy +5 Slots';
+            }
+        }
+
+        // Handle checkout success/cancelled from URL params
+        window.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('checkout') === 'success') {
+                showToast('Payment successful! Your slots have been added.', 'success');
+                if (currentUser) {
+                    setTimeout(async () => {
+                        await fetchUserSlots();
+                        updateDashboard();
+                    }, 1000);
+                }
+                // Clean URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } else if (params.get('checkout') === 'cancelled') {
+                showToast('Checkout cancelled', 'info');
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        });
 
         // ============================================
         // PASSWORD RESET
@@ -3614,7 +3825,7 @@
         // ============================================
         function updateDashboard() {
             // Show stats for both guests and logged-in users
-            const cardLimit = currentUser ? MAX_CARDS : 3;
+            const cardLimit = currentUser ? userSlots.totalSlots : 3;
 
             let totalValue = 0, totalCost = 0;
             watchlist.forEach(card => {
@@ -3726,13 +3937,14 @@
             e.preventDefault();
 
             // Guest users get a lower limit
-            const cardLimit = currentUser ? MAX_CARDS : 3;
+            const cardLimit = currentUser ? userSlots.totalSlots : 3;
             if (watchlist.length >= cardLimit) {
                 if (!currentUser) {
-                    showToast('Create a free account to track up to ' + MAX_CARDS + ' helmets!', 'info');
+                    showToast('Create a free account to track up to ' + userSlots.baseSlots + ' helmets!', 'info');
                     setTimeout(() => openAuthModal('register'), 500);
                 } else {
-                    showToast('Watchlist full! Max ' + MAX_CARDS + ' cards.', 'error');
+                    showToast('Watchlist full! (' + userSlots.totalSlots + ' slots)', 'error');
+                    showUpgradePrompt();
                 }
                 return;
             }
@@ -3773,13 +3985,14 @@
             e.preventDefault();
 
             // Guest users get a lower limit
-            const cardLimit = currentUser ? MAX_CARDS : 3;
+            const cardLimit = currentUser ? userSlots.totalSlots : 3;
             if (watchlist.length >= cardLimit) {
                 if (!currentUser) {
-                    showToast('Create a free account to track up to ' + MAX_CARDS + ' helmets!', 'info');
+                    showToast('Create a free account to track up to ' + userSlots.baseSlots + ' helmets!', 'info');
                     setTimeout(() => openAuthModal('register'), 500);
                 } else {
-                    showToast('Watchlist full! Max ' + MAX_CARDS + ' cards.', 'error');
+                    showToast('Watchlist full! (' + userSlots.totalSlots + ' slots)', 'error');
+                    showUpgradePrompt();
                 }
                 return;
             }

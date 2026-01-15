@@ -320,7 +320,7 @@ async function scrapeDenver(browser) {
                     items.forEach(item => {
                         // Avoid duplicates
                         if (!helmets.find(h => h.title === item.title)) {
-                            helmets.push({ ...item, source: 'denver' });
+                            helmets.push({ ...item, source: 'denverautographs' });
                         }
                     });
                     console.log(`      Found ${items.length} products`);

@@ -913,9 +913,19 @@ app.put('/api/watchlist', authenticateToken, async (req, res) => {
             return res.status(400).json({ error: 'Watchlist must be an array' });
         }
 
-        // Enforce max cards limit (10 for free tier)
-        if (watchlist.length > 10) {
-            return res.status(400).json({ error: 'Maximum 10 cards allowed' });
+        // Get user's slot limit from database
+        const { data: user } = await supabase
+            .from('auth_users')
+            .select('purchased_slots')
+            .eq('id', req.userId)
+            .single();
+
+        const purchasedSlots = user?.purchased_slots || 0;
+        const totalSlots = 10 + purchasedSlots;
+
+        // Enforce dynamic slot limit
+        if (watchlist.length > totalSlots) {
+            return res.status(400).json({ error: `Maximum ${totalSlots} cards allowed` });
         }
 
         // Save to Supabase
@@ -937,11 +947,21 @@ app.post('/api/watchlist/add', authenticateToken, async (req, res) => {
             return res.status(400).json({ error: 'Card data required' });
         }
 
+        // Get user's slot limit from database
+        const { data: user } = await supabase
+            .from('auth_users')
+            .select('purchased_slots')
+            .eq('id', req.userId)
+            .single();
+
+        const purchasedSlots = user?.purchased_slots || 0;
+        const totalSlots = 10 + purchasedSlots;
+
         // Get current watchlist
         const watchlist = await getUserWatchlist(req.userId);
 
-        if (watchlist.length >= 10) {
-            return res.status(400).json({ error: 'Maximum 10 cards allowed' });
+        if (watchlist.length >= totalSlots) {
+            return res.status(400).json({ error: `Maximum ${totalSlots} cards allowed` });
         }
 
         // Add card
